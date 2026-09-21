@@ -98,6 +98,30 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
 .cal-dot.test { background: var(--creek); }
 .cal-dot.test.rough { background: transparent; border-style: dashed; }
 .cal-dot.sat { transform: translate(-50%, -50%); }
+/* Placed points are the only clickable dots; the viewer blanket-disables
+   pointer events on its marker layer, so opt these back in. */
+.viewer > .cal-dot.fixed, .cal-dot.fixed.sat { pointer-events: auto; cursor: pointer; }
+
+/* Inline delete confirm. Anchored above its dot or button, never a dialog. */
+.confirm {
+  position: fixed; z-index: 4000; transform: translate(-50%, -100%);
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  border-radius: 10px; white-space: nowrap; font-size: 13px;
+  background: var(--night); border: 2px solid #4a3378;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+.confirm::after {
+  content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
+  border: 6px solid transparent; border-top-color: #4a3378;
+}
+.confirm-btn {
+  display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+  font-size: 14px; font-weight: 800; line-height: 1;
+}
+.confirm-btn.yes { background: var(--ember); color: var(--deep); }
+.confirm-btn.no { background: transparent; border-color: #4a3378; color: var(--dim); }
+.confirm-btn:focus-visible { outline: 3px solid var(--owl); outline-offset: 2px; }
 
 @media (max-width: 760px) {
   body.cal { grid-template-columns: 1fr; grid-template-rows: 70vh auto; height: auto; }

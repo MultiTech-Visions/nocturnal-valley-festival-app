@@ -20,6 +20,70 @@ function dotEl(cls, text) {
   return el;
 }
 
+// One inline confirm bubble, anchored above whatever element asked for it:
+// a numbered dot on either pane, or the Delete button in the list. Fixed
+// positioning keeps it out of the panes' overflow and Leaflet's transforms.
+// Only one is ever open, and anything that moves a pane dismisses it, since
+// a bubble pinned to a dot that has since panned away is a mis-click waiting
+// to happen.
+const confirmBubble = (() => {
+  let open = null;
+
+  function close() {
+    if (open === null) return;
+    open.el.remove();
+    open = null;
+  }
+
+  function ask(anchorEl, message, onYes) {
+    close();
+    const el = document.createElement('div');
+    el.className = 'confirm';
+
+    const text = document.createElement('span');
+    text.textContent = message;
+    el.appendChild(text);
+
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'confirm-btn yes';
+    yes.textContent = '\u2713';
+    yes.title = 'Delete';
+    yes.addEventListener('click', () => {
+      close();
+      onYes();
+    });
+
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'confirm-btn no';
+    no.textContent = '\u2715';
+    no.title = 'Keep';
+    no.addEventListener('click', close);
+
+    el.append(yes, no);
+    document.body.appendChild(el);
+
+    const r = anchorEl.getBoundingClientRect();
+    el.style.left = `${r.left + r.width / 2}px`;
+    el.style.top = `${r.top - 8}px`;
+    open = { el };
+    yes.focus();
+  }
+
+  // Capture phase so a press anywhere else dismisses before it does its own
+  // work: one tap to cancel, not one to cancel and another to act.
+  document.addEventListener('pointerdown', (e) => {
+    if (open !== null && !open.el.contains(e.target)) close();
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') close();
+  });
+  window.addEventListener('resize', close);
+
+  return { ask, close };
+})();
+
 async function init() {
   const res = await fetch('/public/calibration.json');
   if (!res.ok) throw new Error(`calibration.json returned ${res.status}`);
@@ -63,6 +127,8 @@ async function init() {
     maxNativeZoom: 19,
     attribution: 'Imagery © Esri'
   }).addTo(sat);
+  sat.on('movestart zoomstart', () => confirmBubble.close());
+
   const satLayer = L.layerGroup().addTo(sat);
   let satPending = null;
 
@@ -136,10 +202,28 @@ async function init() {
 
     calib.points.forEach((p, i) => {
       const n = String(i + 1);
-      viewer.setMarker(`pt-${i}`, { x: p.px[0], y: p.px[1], el: dotEl('fixed', n) });
-      L.marker(p.ll, {
+      const remove = () => {
+        calib.points.splice(i, 1);
+        save();
+        render();
+      };
+      const askRemove = (anchorEl) => confirmBubble.ask(anchorEl, `Delete ${p.label}?`, remove);
+
+      const dot = dotEl('fixed', n);
+      // The dot lives inside the viewer container, so its events would
+      // otherwise bubble into the pan/tap handling and drop a pending pixel.
+      dot.addEventListener('pointerdown', (e) => e.stopPropagation());
+      dot.addEventListener('pointerup', (e) => e.stopPropagation());
+      dot.addEventListener('click', () => askRemove(dot));
+      viewer.setMarker(`pt-${i}`, { x: p.px[0], y: p.px[1], el: dot });
+
+      const satMarker = L.marker(p.ll, {
         icon: L.divIcon({ className: '', html: `<div class="cal-dot fixed sat">${n}</div>`, iconSize: [0, 0] })
       }).addTo(satLayer);
+      // Leaflet stops marker clicks from reaching the map, so this can't also
+      // register a satellite pick.
+      // Anchor on the dot itself: the Leaflet icon box is 0x0 by design.
+      satMarker.on('click', () => askRemove(satMarker.getElement().firstElementChild));
 
       const li = document.createElement('li');
       const off = resid === null ? '' : `${Math.round(resid[i])} m off the average fit`;
@@ -151,11 +235,7 @@ async function init() {
       del.className = 'btn small';
       del.type = 'button';
       del.textContent = 'Delete';
-      del.addEventListener('click', () => {
-        calib.points.splice(i, 1);
-        save();
-        render();
-      });
+      del.addEventListener('click', () => askRemove(del));
       li.appendChild(del);
       li.addEventListener('click', (e) => {
         if (e.target === del) return;
