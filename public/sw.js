@@ -1,6 +1,6 @@
 // Bump VERSION on every deploy that changes any file below. The browser
 // only reinstalls the service worker when this file's bytes change.
-const VERSION = 'v1';
+const VERSION = 'v1.1';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',
