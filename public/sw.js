@@ -1,6 +1,9 @@
 // Bump VERSION on every deploy that changes any file below. The browser
 // only reinstalls the service worker when this file's bytes change.
-const VERSION = 'v1';
+// app.css is on the list and this worker's scope is "/", so it serves the
+// calibration page's stylesheet too: skip the bump and /calibrate keeps
+// rendering against the old CSS no matter how many times you deploy.
+const VERSION = '2026-09-21';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',
