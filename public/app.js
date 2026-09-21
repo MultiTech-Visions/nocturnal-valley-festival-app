@@ -131,7 +131,12 @@ async function init() {
 
   els.gpsToggle.addEventListener('click', () => {
     wanted = !wanted;
-    els.gpsToggle.textContent = wanted ? 'Hide my location' : 'Show my location';
+    // textContent would delete the SVG inside the button. The icon carries
+    // its own on/off state through the .off class.
+    els.gpsToggle.classList.toggle('off', !wanted);
+    const label = wanted ? 'Hide my location' : 'Show my location';
+    els.gpsToggle.setAttribute('aria-label', label);
+    els.gpsToggle.title = label;
     if (wanted) {
       centeredOnce = false;
       start();
