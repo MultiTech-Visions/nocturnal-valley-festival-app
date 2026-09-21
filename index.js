@@ -33,14 +33,19 @@ for (const [name, b64] of Object.entries(IMAGES)) {
   FILES.set(name, { type, body: Buffer.from(b64, 'base64') });
 }
 
-// The calibration tool is staff-only. The password comes from the
-// CALIBRATE_PASSWORD env var; an unset or empty value throws at cold start
-// so a misconfigured deploy fails loudly instead of serving the tool open.
-const CALIBRATE_PASSWORD = process.env.CALIBRATE_PASSWORD;
-if (typeof CALIBRATE_PASSWORD !== 'string' || CALIBRATE_PASSWORD === '') {
-  throw new Error('CALIBRATE_PASSWORD is not set; the calibration page cannot be served.');
+// The calibration tool is staff-only. Both halves of the login come from env
+// vars; an unset or empty value throws at cold start so a misconfigured deploy
+// fails loudly instead of serving the tool open. Basic auth always prompts for
+// a username, so there is no blank-username option to fall back on.
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (typeof value !== 'string' || value === '') {
+    throw new Error(`${name} is not set; the calibration page cannot be served.`);
+  }
+  return value;
 }
-const CALIBRATE_USER = 'calibrate';
+const CALIBRATE_USER = requiredEnv('CALIBRATE_USER');
+const CALIBRATE_PASSWORD = requiredEnv('CALIBRATE_PASSWORD');
 const EXPECTED_AUTH = Buffer.from(
   `Basic ${Buffer.from(`${CALIBRATE_USER}:${CALIBRATE_PASSWORD}`).toString('base64')}`
 );
