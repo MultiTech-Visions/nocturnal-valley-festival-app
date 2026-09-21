@@ -17,7 +17,23 @@
   <header class="bar">
     <span id="offline" class="badge pending">Saving for offline…</span>
     <span id="gps-status" class="gps-status">GPS off</span>
+    <button id="bell" class="bell" type="button" aria-label="Announcements" title="Announcements">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 16V10.5a6 6 0 1 0-12 0V16l-1.5 2.5h15L18 16z"></path>
+        <path d="M9.5 19.5a2.5 2.5 0 0 0 5 0"></path>
+      </svg>
+      <span id="bell-count" class="bell-count" hidden></span>
+    </button>
   </header>
+
+  <section id="news" class="sheet" hidden>
+    <div class="sidebar-head">
+      <h2>What's changed</h2>
+      <button id="news-close" class="btn small" type="button">Close</button>
+    </div>
+    <p id="news-note" class="hint"></p>
+    <ul id="news-list" class="news"></ul>
+  </section>
 
   <nav class="tabs">
     <button id="tab-map" class="tab on" type="button">Map</button>

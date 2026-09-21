@@ -103,8 +103,19 @@ const Store = (() => {
 
   // The last schedule pulled from the sheet, kept whole so the app opens on
   // it offline instead of falling back to whatever shipped in the build.
-  async function putCloudSchedule(version, at, schedule) {
-    await run(['meta'], 'readwrite', (m) => m.put({ key: 'schedule', version, at, schedule }));
+  async function putCloudSchedule(version, at, schedule, announcements) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'schedule', version, at, schedule, announcements }));
+  }
+
+  // Which announcements this phone has already been shown.
+  async function putSeen(ids) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'seen', ids }));
+  }
+
+  async function getSeen() {
+    const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'seen'));
+    const found = await rec;
+    return found === undefined ? [] : found.ids;
   }
 
   // Returns the state it left the event in, so a caller can repaint one star
@@ -174,7 +185,7 @@ const Store = (() => {
 
   return {
     load, newId, putPoint, putPhoto, getPhoto, deletePoint, toggleFavorite,
-    putOverride, deleteOverride, putOverrides, putCloudSchedule,
+    putOverride, deleteOverride, putOverrides, putCloudSchedule, putSeen, getSeen,
     addBundle, deleteBundle
   };
 })();

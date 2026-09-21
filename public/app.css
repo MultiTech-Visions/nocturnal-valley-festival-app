@@ -232,6 +232,32 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
    and the pins become untappable. */
 .viewer > div.pin { pointer-events: auto; z-index: 2; }
 
+/* ---------- Announcements ---------- */
+.bell { position: relative; padding: 4px; border: none; background: transparent; color: var(--dim); cursor: pointer; }
+.bell svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bell.unread { color: var(--owl); }
+.bell-count {
+  position: absolute; top: -2px; right: -4px; min-width: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--ember); color: var(--deep);
+  font-size: 10px; font-weight: 800; line-height: 16px; text-align: center;
+}
+.news { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.news li { padding: 10px; border-radius: 12px; background: var(--deep); border-left: 4px solid var(--ember); }
+.news li.reverted { border-left-color: #6b5a8f; opacity: 0.75; }
+.news li.fresh { border-left-color: var(--owl); }
+.news h3 { margin: 0 0 2px; font-size: 14px; }
+.news .when { font-size: 11px; color: var(--dim); }
+.news .body { margin: 6px 0 0; font-size: 13px; }
+.news .diffs { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.news .diffs li { padding: 4px 6px; border-left: none; border-radius: 6px; background: var(--night); font-size: 12px; }
+.news .was { text-decoration: line-through; color: var(--dim); }
+.news .now { font-weight: 800; color: var(--owl); }
+.news .src { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--creek); }
+.news .tag {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; background: #6b5a8f; color: var(--road);
+}
+
 /* ---------- Tabs & schedule ---------- */
 .tabs { display: flex; gap: 8px; padding: 0 14px 10px; background: var(--night); }
 .tab {
