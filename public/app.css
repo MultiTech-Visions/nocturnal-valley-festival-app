@@ -48,9 +48,32 @@ body.app { display: flex; flex-direction: column; height: 100%; overflow: hidden
 .controls { display: flex; gap: 10px; padding: 10px 14px 0; background: var(--night); }
 /* Four labels across a phone give every button a three-line wrap. Two rows
    of two keeps each one on a single line. */
+/* Icon buttons: square targets, comfortably past the 44px minimum. */
+.btn.icon { flex: none; width: 56px; height: 52px; display: grid; place-items: center; padding: 0; }
+.btn.icon svg {
+  width: 26px; height: 26px;
+  fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.btn.icon svg .solid { fill: currentColor; stroke: none; }
+/* The slash only exists while location is off, so the same icon carries
+   both states instead of swapping glyphs. */
+.btn.icon svg .slash { display: none; }
+.btn.icon.off svg .slash { display: inline; }
+.btn.icon.off { background: transparent; border-color: #4a3378; color: var(--road); }
+.controls { justify-content: space-between; }
+.place-yes { flex: 1; background: #2ea043; border-color: #2ea043; color: #fff; }
+.place-no { flex: 1; background: transparent; border-color: #d1242f; color: #ff8a90; }
+
+/* The point being placed: same pin, called out as provisional. */
+.pin.draft .pin-head { background: var(--owl); border-color: var(--deep); }
+.pin.draft .pin-inner { animation: pin-bob 1.4s ease-in-out infinite; }
+.pin.draft .pin-label { background: var(--owl); color: var(--deep); animation: none; }
+
 @media (max-width: 560px) {
-  .controls { display: grid; grid-template-columns: 1fr 1fr; }
-  .controls .btn { padding: 11px 8px; font-size: 14px; }
+  .controls { gap: 8px; }
+  .btn.icon { width: 52px; height: 50px; }
+  .confirm-bar .btn, #confirm-bar .btn { font-size: 15px; }
 }
 .btn {
   border: 2px solid #4a3378; background: transparent; color: var(--road);

@@ -34,11 +34,48 @@
        controls with no inset of its own, so a curved screen ate it. -->
   <footer class="dock">
     <div id="hint" class="hint"></div>
-    <nav class="controls">
-      <button id="gps-toggle" class="btn primary" type="button">Show my location</button>
-      <button id="recenter" class="btn" type="button" disabled>Center on me</button>
-      <button id="drop" class="btn" type="button">Drop a point</button>
-      <button id="share" class="btn" type="button">Share</button>
+    <nav id="controls" class="controls">
+      <button id="gps-toggle" class="btn icon primary off" type="button" aria-label="Show my location" title="Show my location">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="2.6" class="solid"></circle>
+          <path d="M7 7a7 7 0 0 0 0 10M17 17a7 7 0 0 0 0-10"></path>
+          <path d="M4 4a11.5 11.5 0 0 0 0 16M20 20a11.5 11.5 0 0 0 0-16"></path>
+          <line class="slash" x1="3.5" y1="20.5" x2="20.5" y2="3.5"></line>
+        </svg>
+      </button>
+      <button id="recenter" class="btn icon" type="button" aria-label="Center on me" title="Center on me" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="6.5"></circle>
+          <circle cx="12" cy="12" r="2.4" class="solid"></circle>
+          <line x1="12" y1="1.5" x2="12" y2="4.5"></line>
+          <line x1="12" y1="19.5" x2="12" y2="22.5"></line>
+          <line x1="1.5" y1="12" x2="4.5" y2="12"></line>
+          <line x1="19.5" y1="12" x2="22.5" y2="12"></line>
+        </svg>
+      </button>
+      <button id="drop" class="btn icon" type="button" aria-label="Drop a point here" title="Drop a point here">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 21.5s6.8-6.2 6.8-11a6.8 6.8 0 1 0-13.6 0c0 4.8 6.8 11 6.8 11z"></path>
+          <line x1="12" y1="7" x2="12" y2="13"></line>
+          <line x1="9" y1="10" x2="15" y2="10"></line>
+        </svg>
+      </button>
+      <button id="share" class="btn icon" type="button" aria-label="Share points" title="Share points">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="6" cy="12" r="2.6"></circle>
+          <circle cx="17.5" cy="5.5" r="2.6"></circle>
+          <circle cx="17.5" cy="18.5" r="2.6"></circle>
+          <line x1="8.3" y1="10.7" x2="15.2" y2="6.8"></line>
+          <line x1="8.3" y1="13.3" x2="15.2" y2="17.2"></line>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- Swaps in while a point is being placed, so the only two choices on
+         screen are the two that matter. -->
+    <nav id="confirm-bar" class="controls" hidden>
+      <button id="place-ok" class="btn place-yes" type="button">✓ Place here</button>
+      <button id="place-cancel" class="btn place-no" type="button">✕ Cancel</button>
     </nav>
   </footer>
 

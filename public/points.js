@@ -12,7 +12,7 @@ const PointsUI = (() => {
   let viewer = null;
   let geo = null;
   let state = { points: [], bundles: [] };
-  let dropping = false;
+  let draft = null;
   let editing = null;
   let pendingPhoto = null;
   let stopPlaying = null;
@@ -123,23 +123,94 @@ const PointsUI = (() => {
   }
 
   // ---------- Dropping ----------
-  function arm() {
-    dropping = !dropping;
-    els.drop.classList.toggle('armed', dropping);
-    els.drop.textContent = dropping ? 'Tap the map…' : 'Drop a point';
-    status(dropping ? 'Tap where the landmark is.' : '');
+  // Pressing the pin button places a provisional point at the phone's own
+  // position and zooms to it: standing at the thing you want to mark is the
+  // common case, and hunting for it on an illustrated map is not. The point
+  // can still be moved by tapping elsewhere before it is confirmed.
+  // getCurrentPosition's own timeout does not cover waiting for the user to
+  // answer the permission prompt -- the spec starts that clock only once
+  // permission is granted. Ignore the prompt and neither callback ever
+  // fires, so the wall-clock race is what stops a permanent "Finding your
+  // location…".
+  const FIX_WAIT_MS = 12000;
+
+  function currentPosition() {
+    if (!('geolocation' in navigator)) return Promise.reject(new Error('this browser has no location support'));
+    return Promise.race([
+      new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          // A fix this recent is good enough to drop a pin on, and reusing
+          // the one the map already has beats waking the GPS for another.
+          maximumAge: 10000,
+          timeout: FIX_WAIT_MS
+        });
+      }),
+      new Promise((resolve, reject) => setTimeout(() => reject(new Error('no fix yet')), FIX_WAIT_MS))
+    ]);
   }
 
-  // Called by app.js on every map tap; only acts while armed.
-  function onMapTap(x, y) {
-    if (!dropping) return;
-    const here = geo.unproject(x, y);
-    dropping = false;
-    els.drop.classList.remove('armed');
-    els.drop.textContent = 'Drop a point';
-    status(here.inMesh ? '' : 'That spot is outside the calibrated area, so its location is a rough estimate.');
-    openForm({ id: null, label: '', note: '', lat: here.lat, lng: here.lng, photoId: null, bundleId: null });
+  function setDraft(lat, lng, recenter) {
+    // Carry the hand-placed flag across replacements, or a fix arriving a
+    // second after a deliberate tap would move the point back.
+    draft = { lat, lng, moved: draft !== null && draft.moved === true };
+    const p = geo.project(lat, lng);
+    const el = document.createElement('div');
+    el.className = 'pin draft';
+    el.innerHTML = '<div class="pin-inner"><span class="pin-head"></span><span class="pin-label">New point</span></div>';
+    viewer.setMarker('draft', { x: p.x, y: p.y, el });
+    if (recenter) viewer.centerOn(p.x, p.y, 3);
   }
+
+  function placingMode(on) {
+    els.controls.hidden = on;
+    els.confirmBar.hidden = !on;
+  }
+
+  function clearDraft() {
+    draft = null;
+    viewer.removeMarker('draft');
+    placingMode(false);
+    status('');
+  }
+
+  async function arm() {
+    if (draft !== null) return;
+
+    // Place something immediately at the middle of the view, so the flow
+    // never waits on the GPS. If a fix arrives and the point has not been
+    // moved by hand, it jumps there; if it never arrives, nothing is stuck.
+    const middle = geo.unproject(...viewer.toImage(viewer.el.clientWidth / 2, viewer.el.clientHeight / 2));
+    setDraft(middle.lat, middle.lng, false);
+    placingMode(true);
+    status('Finding your location… tap the map to place it yourself.');
+
+    const placing = draft;
+    try {
+      const pos = await currentPosition();
+      // Abandoned, or already moved deliberately: leave it where it is.
+      if (draft !== placing || draft.moved) return;
+      setDraft(pos.coords.latitude, pos.coords.longitude, true);
+      status(`Placed at your location, within ${Math.round(pos.coords.accuracy)} m. Tap the map to move it.`);
+    } catch (err) {
+      if (draft !== placing || draft.moved) return;
+      status(`No GPS fix (${err.message}) — drag the map and tap where the point belongs.`);
+    }
+  }
+
+  // Called by app.js on every map tap; only moves a point already being placed.
+  function onMapTap(x, y) {
+    if (draft === null) return;
+    const here = geo.unproject(x, y);
+    setDraft(here.lat, here.lng, false);
+    // Hand placement wins over a fix that lands a moment later.
+    draft.moved = true;
+    status(here.inMesh
+      ? 'Tap again to move it, or confirm below.'
+      : 'That spot is outside the calibrated area, so its location is a rough estimate.');
+  }
+
+
 
   function openForm(point) {
     editing = point;
@@ -175,6 +246,7 @@ const PointsUI = (() => {
     }
     await Store.putPoint(point);
     show(null);
+    if (draft !== null) clearDraft();
     await reload();
   }
 
@@ -448,7 +520,7 @@ const PointsUI = (() => {
     geo = options.geo;
 
     for (const id of [
-      'scrim', 'hint', 'drop', 'share', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
+      'scrim', 'hint', 'drop', 'share', 'controls', 'confirm-bar', 'place-ok', 'place-cancel', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
       'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-edit', 'detail-delete', 'detail-close',
       'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'lightbox', 'lightbox-img',
       'share-list', 'share-name', 'share-go', 'share-close', 'bundle-list', 'receive-go',
@@ -458,6 +530,10 @@ const PointsUI = (() => {
     }
 
     els.drop.addEventListener('click', arm);
+    els.placeOk.addEventListener('click', () => {
+      openForm({ id: null, label: '', note: '', lat: draft.lat, lng: draft.lng, photoId: null, bundleId: null });
+    });
+    els.placeCancel.addEventListener('click', clearDraft);
     els.share.addEventListener('click', async () => {
       // Re-read before rendering: one indexed read is cheap, and it means the
       // sheet can never show a list that something else has already changed.

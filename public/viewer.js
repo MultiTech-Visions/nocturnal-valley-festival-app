@@ -27,16 +27,47 @@ class Viewer {
       const r = this.el.getBoundingClientRect();
       this.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015));
     }, { passive: false });
-    new ResizeObserver(() => this.fit()).observe(this.el);
+    this.viewW = 0;
+    this.viewH = 0;
+    new ResizeObserver(() => this.refit()).observe(this.el);
     this.fit();
   }
 
   fit() {
     const { clientWidth: w, clientHeight: h } = this.el;
+    this.viewW = w;
+    this.viewH = h;
     this.minScale = Math.min(w / this.iw, h / this.ih);
     this.scale = this.minScale;
     this.tx = (w - this.iw * this.scale) / 2;
     this.ty = (h - this.ih * this.scale) / 2;
+    this.render();
+  }
+
+  // The box changing size is not a reason to throw away where someone is
+  // looking. A line of footer text appearing, the on-screen keyboard, a
+  // rotation -- all of these resize the viewer, and a plain fit() would
+  // snap a zoomed-in map back to the whole image every time. Keep the same
+  // image point centred and the same zoom, rescaled against the new fit.
+  refit() {
+    const w = this.el.clientWidth;
+    const h = this.el.clientHeight;
+    if (w === 0 || h === 0) return;
+    if (this.viewW === 0 || this.viewH === 0) {
+      this.fit();
+      return;
+    }
+    const cx = (this.viewW / 2 - this.tx) / this.scale;
+    const cy = (this.viewH / 2 - this.ty) / this.scale;
+    const nextMin = Math.min(w / this.iw, h / this.ih);
+    const zoomRatio = this.scale / this.minScale;
+    this.minScale = nextMin;
+    this.scale = Math.min(Math.max(nextMin * zoomRatio, nextMin), nextMin * this.maxZoom);
+    this.viewW = w;
+    this.viewH = h;
+    this.tx = w / 2 - cx * this.scale;
+    this.ty = h / 2 - cy * this.scale;
+    this.clamp();
     this.render();
   }
 
@@ -107,8 +138,11 @@ class Viewer {
     this.pointers.delete(e.pointerId);
     this.pinch = null;
     if (this.tap === null || this.onTap === undefined) return;
+    // A thumb on a phone is not a mouse: 8px of drift is an ordinary tap,
+    // not a pan, and treating it as one made tapping the map feel dead.
+    const slop = e.pointerType === 'mouse' ? 8 : 14;
     const moved = Math.hypot(e.clientX - this.tap.x, e.clientY - this.tap.y);
-    if (moved < 8 && performance.now() - this.tap.t < 400) {
+    if (moved < slop && performance.now() - this.tap.t < 500) {
       const r = this.el.getBoundingClientRect();
       this.onTap(...this.toImage(e.clientX - r.left, e.clientY - r.top));
     }
