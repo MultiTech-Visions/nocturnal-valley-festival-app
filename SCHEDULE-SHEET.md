@@ -2,22 +2,72 @@
 
 Set times change on site. This lets you change them without a redeploy.
 
-## One-time setup
+## The sheet
 
-1. Make a Google Sheet with this header row, exactly these column names
-   (order does not matter, extra columns are ignored):
+One tab named **Events**, with this header row — exactly these column names,
+in any order, extra columns ignored:
 
-   | id | title | track | day | start | end | note |
-   |----|-------|-------|-----|-------|-----|------|
-   | a-gjones | G Jones | astral | fri | 20:00 | 22:00 | |
-   | n-peekaboo | PEEKABOO b2b LYNY | nocturnal | thu | 20:00 | 21:30 | back to back |
+| id | title | track | day | start | end | note |
+|----|-------|-------|-----|-------|-----|------|
+| a-gjones | G Jones | astral | fri | 20:00 | 22:00 | |
+| n-peekaboo | PEEKABOO b2b LYNY | nocturnal | thu | 20:00 | 21:30 | back to back |
 
-2. **File → Share → Publish to web**, choose the sheet, pick **Comma-separated
-   values (.csv)**, publish, copy the URL. It looks like
-   `https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=0&single=true&output=csv`
+Trailing blank cells are fine — a row can stop after `title` and the rest
+reads as "to be announced".
 
-3. In Cloud Run → Edit & Deploy → Variables, set `SCHEDULE_EVENTS_CSV_URL` to
-   that URL. Deploy once. After this, sheet edits need no deploy at all.
+## Setup — private sheet (preferred)
+
+The sheet stays private. Nothing is published, no API key or JSON credential
+file exists anywhere: Cloud Run mints a token for its own service account at
+request time.
+
+1. **Enable the Sheets API** once for the project:
+   `gcloud services enable sheets.googleapis.com`
+
+2. **Find the service account** the service runs as:
+   ```
+   gcloud run services describe nocturnal-valley-festival-app \
+     --region us-central1 --format='value(spec.template.spec.serviceAccountName)'
+   ```
+   If that comes back empty the service is on the Compute Engine default
+   account, `PROJECT_NUMBER-compute@developer.gserviceaccount.com` — here that
+   is `47119367007-compute@developer.gserviceaccount.com`.
+
+3. **Share the sheet** with that address as **Viewer**, the same way you would
+   share with a person.
+
+4. **Set `SCHEDULE_SHEET_ID`** in Cloud Run → Edit & Deploy → Variables, to the
+   id from the sheet URL — the part between `/d/` and `/edit`:
+   `https://docs.google.com/spreadsheets/d/`**`1AbC...xyz`**`/edit`
+
+   Optional: `SCHEDULE_EVENTS_TAB` if the tab is not called `Events`, and
+   `SCHEDULE_TRACKS_TAB` to drive the stage list from a second tab
+   (`id,name,kind,sound,color`).
+
+Deploy once. From then on, editing the sheet is all it takes.
+
+### If it does not work
+
+The Sync button shows the reason verbatim:
+
+- *"The service account cannot read this sheet"* — step 3 was missed, or the
+  Sheets API is not enabled. Sharing with the wrong address looks identical,
+  so check it against step 2.
+- *"No sheet … with a tab named …"* — the tab is not called `Events`.
+- *"Could not get a service-account token"* — only Cloud Run can mint one;
+  this is expected if you are running the service locally.
+
+## Setup — published CSV (fallback)
+
+Simpler, but **the CSV URL is readable by anyone who gets hold of it**, so do
+not use it for anything you would not put on a public page.
+
+**File → Share → Publish to web** → the sheet → **Comma-separated values
+(.csv)** → publish, then set `SCHEDULE_EVENTS_CSV_URL` to the URL
+(`https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=0&single=true&output=csv`).
+`SCHEDULE_TRACKS_CSV_URL` does the same for stages.
+
+`SCHEDULE_SHEET_ID` wins if both are set.
 
 ## The columns
 
@@ -50,6 +100,6 @@ id, applied over whatever the published schedule says, so a sync updates
 everything a person has not personally touched and leaves what they have.
 That is also why ids need to stay stable.
 
-If the URL is not set, `/api/schedule` answers 503 and the app quietly uses
-the schedule that shipped with the build. If the sheet is not actually
-published, the fetch returns HTML and the error says so.
+If neither is set, `/api/schedule` answers 503 and the app uses the schedule
+that shipped with the build. On the CSV path, a sheet you meant to publish
+but did not returns HTML instead of CSV, and the error says exactly that.

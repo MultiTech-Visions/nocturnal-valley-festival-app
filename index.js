@@ -71,10 +71,63 @@ function authOk(header) {
 // Both URLs are optional: with neither set the endpoint reports that it is
 // not configured rather than pretending, and the app falls back to the
 // bundled file.
+// Two ways in, preferred first:
+//
+// SCHEDULE_SHEET_ID  - a private sheet shared with this service's own
+//                      service account. Nothing is published to the web and
+//                      no key file exists anywhere: Cloud Run's metadata
+//                      server mints a token, the Sheets REST API takes it.
+// SCHEDULE_EVENTS_CSV_URL - a sheet published to the web as CSV. Simpler to
+//                      set up, but the URL is readable by anyone who has it.
+const SHEET_ID = process.env.SCHEDULE_SHEET_ID;
+const EVENTS_TAB = process.env.SCHEDULE_EVENTS_TAB === undefined ? 'Events' : process.env.SCHEDULE_EVENTS_TAB;
+const TRACKS_TAB = process.env.SCHEDULE_TRACKS_TAB;
 const EVENTS_CSV_URL = process.env.SCHEDULE_EVENTS_CSV_URL;
 const TRACKS_CSV_URL = process.env.SCHEDULE_TRACKS_CSV_URL;
 const SHEET_TTL_MS = 60000;
 let sheetCache = null;
+let tokenCache = null;
+
+// The metadata server is only reachable from inside Cloud Run, which is the
+// point: no credentials are stored, shipped, or rotatable-by-mistake.
+// spreadsheets.readonly is asked for explicitly -- the default
+// cloud-platform token is not a scope the Sheets API accepts.
+const METADATA_TOKEN_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-account/default/token'
+  + '?scopes=https://www.googleapis.com/auth/spreadsheets.readonly';
+
+async function accessToken() {
+  if (tokenCache !== null && Date.now() < tokenCache.expires) return tokenCache.token;
+  const res = await fetch(METADATA_TOKEN_URL, { headers: { 'Metadata-Flavor': 'Google' } });
+  if (!res.ok) {
+    throw new Error(`Could not get a service-account token (${res.status}). This path only works on Cloud Run.`);
+  }
+  const body = await res.json();
+  // A minute of headroom, so a token never expires mid-request.
+  tokenCache = { token: body.access_token, expires: Date.now() + (body.expires_in - 60) * 1000 };
+  return tokenCache.token;
+}
+
+async function fetchSheetTab(tab) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}`
+    + `/values/${encodeURIComponent(tab)}?majorDimension=ROWS`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${await accessToken()}` } });
+  if (res.status === 403) {
+    throw new Error(`The service account cannot read this sheet. Share the sheet with it as Viewer, and enable the Sheets API. (tab "${tab}")`);
+  }
+  if (res.status === 404) {
+    throw new Error(`No sheet ${SHEET_ID} with a tab named "${tab}".`);
+  }
+  if (!res.ok) throw new Error(`Sheets API said ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const body = await res.json();
+  if (body.values === undefined || body.values.length === 0) {
+    throw new Error(`Tab "${tab}" is empty. The first row must be the header: id, title, track, day, start, end, note.`);
+  }
+  // The API trims trailing empty cells per row, so short rows are padded
+  // back out to the header width rather than losing their last columns.
+  const width = body.values[0].length;
+  const rows = body.values.map((r) => (r.length === width ? r : r.concat(new Array(width - r.length).fill(''))));
+  return toObjects(rows);
+}
 
 // RFC 4180 enough for a spreadsheet export: quoted fields, embedded commas,
 // doubled quotes, CRLF.
@@ -122,9 +175,20 @@ async function fetchCsv(url) {
   return toObjects(parseCsv(text));
 }
 
+const usingSheetApi = () => SHEET_ID !== undefined;
+const scheduleConfigured = () => usingSheetApi() || EVENTS_CSV_URL !== undefined;
+
+// Same row shape either way, so everything downstream is identical.
+const readEvents = () => (usingSheetApi() ? fetchSheetTab(EVENTS_TAB) : fetchCsv(EVENTS_CSV_URL));
+
+function readTracks() {
+  if (usingSheetApi()) return TRACKS_TAB === undefined ? null : fetchSheetTab(TRACKS_TAB);
+  return TRACKS_CSV_URL === undefined ? null : fetchCsv(TRACKS_CSV_URL);
+}
+
 async function buildSchedule() {
   const base = JSON.parse(FILES.get('schedule.json').body.toString('utf8'));
-  const rows = await fetchCsv(EVENTS_CSV_URL);
+  const rows = await readEvents();
   const events = rows.map((r) => {
     const event = {
       id: r.id,
@@ -141,7 +205,8 @@ async function buildSchedule() {
     return event;
   });
 
-  const tracks = TRACKS_CSV_URL === undefined ? base.tracks : (await fetchCsv(TRACKS_CSV_URL)).map((r) => ({
+  const trackRows = await readTracks();
+  const tracks = trackRows === null ? base.tracks : trackRows.map((r) => ({
     id: r.id,
     name: r.name,
     kind: r.kind === '' ? 'stage' : r.kind,
@@ -184,8 +249,8 @@ functions.http('app', (req, res) => {
   // ?check=1 answers with the version alone: a phone deciding whether a
   // sync is worth it should not pull the whole schedule to find out.
   if (req.path === '/api/schedule') {
-    if (EVENTS_CSV_URL === undefined) {
-      res.status(503).json({ error: 'No schedule sheet configured. Set SCHEDULE_EVENTS_CSV_URL.' });
+    if (!scheduleConfigured()) {
+      res.status(503).json({ error: 'No schedule sheet configured. Set SCHEDULE_SHEET_ID (preferred) or SCHEDULE_EVENTS_CSV_URL.' });
       return;
     }
     getSheet()
