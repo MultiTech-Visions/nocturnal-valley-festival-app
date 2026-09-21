@@ -3,7 +3,7 @@
 // app.css is on the list and this worker's scope is "/", so it serves the
 // calibration page's stylesheet too: skip the bump and /calibrate keeps
 // rendering against the old CSS no matter how many times you deploy.
-const VERSION = '2026-09-21b';
+const VERSION = 'V2';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',
