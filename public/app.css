@@ -284,7 +284,10 @@ body:not(.view-schedule) #schedule { display: none; }
   border-left: 4px solid var(--ev); font-size: 12px;
 }
 .ev.mine { background: color-mix(in srgb, var(--ev) 42%, var(--night)); outline: 2px solid var(--ev); }
-.ev-title { font-weight: 800; }
+.ev-title { font-weight: 800; line-height: 1.15; }
+/* A 45-minute set is a short box; let the name use the width it has. */
+.ev { font-size: 11.5px; }
+.ev-when, .ev-note { line-height: 1.1; }
 .ev-when, .ev-note { font-size: 11px; color: var(--dim); }
 .ev-friends { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
 .who {

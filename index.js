@@ -80,7 +80,7 @@ function authOk(header) {
 // SCHEDULE_EVENTS_CSV_URL - a sheet published to the web as CSV. Simpler to
 //                      set up, but the URL is readable by anyone who has it.
 const SHEET_ID = process.env.SCHEDULE_SHEET_ID;
-const EVENTS_TAB = process.env.SCHEDULE_EVENTS_TAB === undefined ? 'Events' : process.env.SCHEDULE_EVENTS_TAB;
+const EVENTS_TAB = process.env.SCHEDULE_EVENTS_TAB;
 const TRACKS_TAB = process.env.SCHEDULE_TRACKS_TAB;
 const EVENTS_CSV_URL = process.env.SCHEDULE_EVENTS_CSV_URL;
 const TRACKS_CSV_URL = process.env.SCHEDULE_TRACKS_CSV_URL;
@@ -107,20 +107,23 @@ async function accessToken() {
   return tokenCache.token;
 }
 
+// tab undefined means "the first sheet, whatever it is named": a range with
+// no sheet prefix is how the API expresses that.
 async function fetchSheetTab(tab) {
+  const range = tab === undefined ? 'A:Z' : `${tab}!A:Z`;
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(SHEET_ID)}`
-    + `/values/${encodeURIComponent(tab)}?majorDimension=ROWS`;
+    + `/values/${encodeURIComponent(range)}?majorDimension=ROWS`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${await accessToken()}` } });
   if (res.status === 403) {
-    throw new Error(`The service account cannot read this sheet. Share the sheet with it as Viewer, and enable the Sheets API. (tab "${tab}")`);
+    throw new Error('The service account cannot read this sheet. Share the sheet with it as Viewer, and enable the Sheets API.');
   }
   if (res.status === 404) {
-    throw new Error(`No sheet ${SHEET_ID} with a tab named "${tab}".`);
+    throw new Error(tab === undefined ? `No sheet with id ${SHEET_ID}.` : `No sheet ${SHEET_ID} with a tab named "${tab}".`);
   }
   if (!res.ok) throw new Error(`Sheets API said ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const body = await res.json();
   if (body.values === undefined || body.values.length === 0) {
-    throw new Error(`Tab "${tab}" is empty. The first row must be the header: id, title, track, day, start, end, note.`);
+    throw new Error('That sheet is empty. The first row must be the header: id, title, track, day, start, end, note.');
   }
   // The API trims trailing empty cells per row, so short rows are padded
   // back out to the header width rather than losing their last columns.
@@ -165,6 +168,16 @@ function toObjects(rows) {
 
 const orNull = (v) => (v === undefined || v === '' ? null : v);
 
+// Sheets treats anything past 24:00 as a duration and writes it back as
+// "25:30:00". Both that and a plain "9:05" normalise to "HH:MM"; anything
+// else is a typo worth surfacing rather than quietly dropping.
+function normalizeTime(v, where) {
+  if (v === undefined || v === '') return null;
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(v.trim());
+  if (m === null) throw new Error(`${where}: "${v}" is not a time. Use 21:30, and count on past midnight (25:30 is 1:30am).`);
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+
 async function fetchCsv(url) {
   const res = await fetch(url, { redirect: 'follow' });
   if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status} ${res.statusText}`);
@@ -195,8 +208,8 @@ async function buildSchedule() {
       title: r.title,
       track: orNull(r.track),
       day: orNull(r.day),
-      start: orNull(r.start),
-      end: orNull(r.end)
+      start: normalizeTime(r.start, `Row ${r.id} start`),
+      end: normalizeTime(r.end, `Row ${r.id} end`)
     };
     if (r.note !== undefined && r.note !== '') event.note = r.note;
     if (event.id === '' || event.title === '') {

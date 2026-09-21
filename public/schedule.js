@@ -8,7 +8,7 @@ const ScheduleUI = (() => {
   // One grid row per quarter hour. Fine enough for a 15-minute changeover,
   // coarse enough that a whole festival day fits in one scroll.
   const SLOT_MIN = 15;
-  const ROW_PX = 13;
+  const ROW_PX = 15;
 
   let data = null;
   let bundled = null;
@@ -501,10 +501,17 @@ const ScheduleUI = (() => {
     data = bundled;
 
     activeDay = data.days[0].id;
-    // Stages on by default, activity tracks off: the grid should open on
-    // what most people came for, not on everything at once.
+    // Stages that actually have sets are on; activity tracks and stages with
+    // nothing programmed stay off, so the grid does not open with an empty
+    // column eating a quarter of a phone's width.
+    const programmed = new Set(data.events.map((e) => e.track));
     for (const t of data.tracks) {
-      if (t.kind === 'stage') visibleTracks.add(t.id);
+      if (t.kind === 'stage' && programmed.has(t.id)) visibleTracks.add(t.id);
+    }
+    if (visibleTracks.size === 0) {
+      for (const t of data.tracks) {
+        if (t.kind === 'stage') visibleTracks.add(t.id);
+      }
     }
 
     els.mine.addEventListener('click', () => {

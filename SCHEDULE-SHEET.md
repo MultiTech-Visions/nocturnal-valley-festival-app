@@ -2,9 +2,13 @@
 
 Set times change on site. This lets you change them without a redeploy.
 
+The live sheet is **Noc Valley Schedule** in your *Noc Valley* Drive folder:
+`https://docs.google.com/spreadsheets/d/1QLeHwH0sGYN4pHWGYwHMfYu7mEcgreYNuxulXg-Vn7I/edit`
+It already holds all 83 sets from the Thursday/Friday/Saturday posters.
+
 ## The sheet
 
-One tab named **Events**, with this header row — exactly these column names,
+The **first tab** is read, whatever it is named, with this header row — exactly these column names,
 in any order, extra columns ignored:
 
 | id | title | track | day | start | end | note |
@@ -40,8 +44,8 @@ request time.
    id from the sheet URL — the part between `/d/` and `/edit`:
    `https://docs.google.com/spreadsheets/d/`**`1AbC...xyz`**`/edit`
 
-   Optional: `SCHEDULE_EVENTS_TAB` if the tab is not called `Events`, and
-   `SCHEDULE_TRACKS_TAB` to drive the stage list from a second tab
+   Optional: `SCHEDULE_EVENTS_TAB` to read a tab other than the first one,
+   and `SCHEDULE_TRACKS_TAB` to drive the stage list from a second tab
    (`id,name,kind,sound,color`).
 
 Deploy once. From then on, editing the sheet is all it takes.
@@ -53,7 +57,8 @@ The Sync button shows the reason verbatim:
 - *"The service account cannot read this sheet"* — step 3 was missed, or the
   Sheets API is not enabled. Sharing with the wrong address looks identical,
   so check it against step 2.
-- *"No sheet … with a tab named …"* — the tab is not called `Events`.
+- *"No sheet with id …"* — `SCHEDULE_SHEET_ID` is wrong.
+- *"Row … start: … is not a time"* — a cell in start/end is not `HH:MM`.
 - *"Could not get a service-account token"* — only Cloud Run can mint one;
   this is expected if you are running the service locally.
 
@@ -82,6 +87,10 @@ not use it for anything you would not put on a public page.
 - **start** / **end** — 24-hour `HH:MM`. **After midnight counts on from the
   day the night started**: a 1:30am finish on Friday night is `25:30`, not
   `01:30`. Blank both for an act with no time yet.
+
+  Sheets treats anything past 24:00 as a duration and stores it as
+  `25:30:00`. That is read correctly — no need to fight it. A value that is
+  not a time at all fails loudly and names the row.
 - **note** — optional line under the title ("2-hour reverse journey set").
 
 Stages themselves come from the bundled `schedule.json`. To edit those from a
