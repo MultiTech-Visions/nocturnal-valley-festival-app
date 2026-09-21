@@ -1,4 +1,5 @@
 const functions = require('@google-cloud/functions-framework');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -32,6 +33,27 @@ for (const [name, b64] of Object.entries(IMAGES)) {
   FILES.set(name, { type, body: Buffer.from(b64, 'base64') });
 }
 
+// The calibration tool is staff-only. The password comes from the
+// CALIBRATE_PASSWORD env var; an unset or empty value throws at cold start
+// so a misconfigured deploy fails loudly instead of serving the tool open.
+const CALIBRATE_PASSWORD = process.env.CALIBRATE_PASSWORD;
+if (typeof CALIBRATE_PASSWORD !== 'string' || CALIBRATE_PASSWORD === '') {
+  throw new Error('CALIBRATE_PASSWORD is not set; the calibration page cannot be served.');
+}
+const CALIBRATE_USER = 'calibrate';
+const EXPECTED_AUTH = Buffer.from(
+  `Basic ${Buffer.from(`${CALIBRATE_USER}:${CALIBRATE_PASSWORD}`).toString('base64')}`
+);
+
+// Length-independent constant-time compare: hash both sides so a wrong-length
+// header can't be distinguished from a wrong-password one by timing.
+function authOk(header) {
+  if (typeof header !== 'string') return false;
+  const a = crypto.createHash('sha256').update(header).digest();
+  const b = crypto.createHash('sha256').update(EXPECTED_AUTH).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
 // Paths that must live at root scope (service worker, manifest, pages).
 const ROUTES = {
   '/': 'index.html',
@@ -43,6 +65,13 @@ const ROUTES = {
 functions.http('app', (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.status(405).send('Method not allowed');
+    return;
+  }
+
+  if (req.path === '/calibrate' && !authOk(req.get('authorization'))) {
+    res.set('WWW-Authenticate', 'Basic realm="Nocturnal Valley calibration", charset="UTF-8"');
+    res.set('Cache-Control', 'no-store');
+    res.status(401).send('Authentication required');
     return;
   }
 
