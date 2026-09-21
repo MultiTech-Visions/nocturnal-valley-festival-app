@@ -66,8 +66,22 @@ async function init() {
   const satLayer = L.layerGroup().addTo(sat);
   let satPending = null;
 
+  // World_Imagery is unlabeled aerial photography, so a cold calibration gives
+  // you nothing to navigate by: no town names, no roads, no park name. These
+  // transparent Esri reference layers put those labels over the imagery.
+  // They're clutter once you're oriented, hence the toggle.
+  const labels = L.layerGroup([
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19 }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 19 })
+  ]);
+  L.control.layers(null, { 'Place &amp; road labels': labels }, { collapsed: false, position: 'topright' }).addTo(sat);
+
   if (calib.points.length > 0) {
+    // Already calibrated: fitBounds lands you on the venue, so start clean.
     sat.fitBounds(calib.points.map((p) => p.ll), { padding: [40, 40] });
+  } else {
+    // Nothing placed yet: you're hunting for the site, so start labeled.
+    labels.addTo(sat);
   }
 
   sat.on('click', (e) => {
