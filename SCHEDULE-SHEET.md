@@ -2,9 +2,11 @@
 
 Set times change on site. This lets you change them without a redeploy.
 
-The live sheet is **Noc Valley Schedule** in your *Noc Valley* Drive folder:
-`https://docs.google.com/spreadsheets/d/1QLeHwH0sGYN4pHWGYwHMfYu7mEcgreYNuxulXg-Vn7I/edit`
-It already holds all 83 sets from the Thursday/Friday/Saturday posters.
+The live sheet is **Noc Valley Schedule + Announcements** in your *Noc Valley*
+Drive folder:
+`https://docs.google.com/spreadsheets/d/12ejn4glVJzReUPuUHynot28ashmALTlNKS1RSatr0hY/edit`
+Three tabs: **Events** (all 83 sets from the posters), **Announcements**, and
+**Changes**. Delete the two earlier half-built sheets in that folder.
 
 ## The sheet
 
@@ -112,3 +114,70 @@ That is also why ids need to stay stable.
 If neither is set, `/api/schedule` answers 503 and the app uses the schedule
 that shipped with the build. On the CSV path, a sheet you meant to publish
 but did not returns HTML instead of CSV, and the error says exactly that.
+
+
+---
+
+# Announcements and change history
+
+The **Announcements** and **Changes** tabs are where an automation — or a
+person — records what the organisers posted and what it did about it. The app
+shows these behind the bell in the top right.
+
+## Announcements
+
+| column | what goes in it |
+|--------|-----------------|
+| `id` | stable, unique, e.g. `ann-0007`. Reused when revising the same news. |
+| `at` | ISO timestamp, `2026-09-25T19:30:00Z`. Sorting is newest first. |
+| `kind` | `change`, `lineup`, `weather` or `announcement`. `example` is never shown. |
+| `title` | one line, shown in bold |
+| `body` | a sentence or two |
+| `url` | link to the original post — the app links straight out to it |
+| `status` | `active`, or `reverted` once undone |
+| `revision` | starts at 1; bump it when the same post is corrected |
+
+Bumping `revision` re-lights the bell for everyone, even for people who
+already read revision 1. That is the mechanism for "they posted it, then
+changed their mind".
+
+## Changes
+
+One row per field actually altered, so every edit can be undone.
+
+| column | what goes in it |
+|--------|-----------------|
+| `id` | unique, e.g. `chg-0021` |
+| `announcementId` | the `id` of the announcement that caused it |
+| `eventId` | the `id` from the Events tab |
+| `field` | `start`, `end`, `track`, `day`, `title` or `note` |
+| `oldValue` | **what it was before** — this is what makes an undo possible |
+| `newValue` | what it was changed to |
+| `at` | ISO timestamp |
+| `status` | `applied`, or `reverted` |
+
+## Reverting
+
+1. Put every `oldValue` back into the matching Events cell.
+2. Set those Changes rows to `status = reverted`.
+3. Set the announcement to `status = reverted`.
+
+The post stays visible in the app, greyed out and marked *reverted*, with its
+changes no longer listed — so people who acted on the old information can see
+it was taken back rather than having it silently vanish.
+
+Nothing in the app writes to the sheet. The server only reads, so a bug on a
+phone can never corrupt the source of truth.
+
+## For the automation
+
+Write to the sheet with the Sheets API. Give the automation's own account
+**Editor** on the sheet; the Cloud Run service account stays **Viewer**.
+
+- Never change an `id` in the Events tab. Starred sets and people's own
+  corrections are keyed to it.
+- Always write the `oldValue` before overwriting a cell.
+- Post the announcement row and the change rows in the same run, so the app
+  never shows a change with no explanation.
+- Announcements are part of the version hash, so posting one is itself enough
+  to tell phones there is something to sync.

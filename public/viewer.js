@@ -2,10 +2,11 @@
 // image-pixel coordinates but drawn in screen space so they stay a constant
 // size at any zoom. Used by both the map app and the calibration tool.
 class Viewer {
-  constructor(container, img, { onTap, maxZoom }) {
+  constructor(container, img, { onTap, onLongPress, maxZoom }) {
     this.el = container;
     this.img = img;
     this.onTap = onTap;
+    this.onLongPress = onLongPress;
     this.maxZoom = maxZoom;
     this.iw = img.naturalWidth;
     this.ih = img.naturalHeight;
@@ -21,7 +22,10 @@ class Viewer {
     this.el.addEventListener('pointerdown', (e) => this.down(e));
     this.el.addEventListener('pointermove', (e) => this.move(e));
     this.el.addEventListener('pointerup', (e) => this.up(e));
-    this.el.addEventListener('pointercancel', (e) => this.pointers.delete(e.pointerId));
+    this.el.addEventListener('pointercancel', (e) => {
+      this.pointers.delete(e.pointerId);
+      this.cancelLongPress();
+    });
     this.el.addEventListener('wheel', (e) => {
       e.preventDefault();
       const r = this.el.getBoundingClientRect();
@@ -107,6 +111,28 @@ class Viewer {
     if (this.pointers.size === 1) this.tap = { x: e.clientX, y: e.clientY, t: performance.now() };
     else this.tap = null;
     this.pinch = null;
+    this.armLongPress(e);
+  }
+
+  // A press that stays put for half a second. Cancelled by movement, by a
+  // second finger, and by the release itself, so it never competes with a
+  // tap or a pan.
+  armLongPress(e) {
+    this.cancelLongPress();
+    if (this.onLongPress === undefined || this.pointers.size !== 1) return;
+    const r = this.el.getBoundingClientRect();
+    const at = this.toImage(e.clientX - r.left, e.clientY - r.top);
+    this.longPress = setTimeout(() => {
+      this.longPress = null;
+      this.tap = null;
+      this.onLongPress(...at);
+    }, 500);
+  }
+
+  cancelLongPress() {
+    if (this.longPress === undefined || this.longPress === null) return;
+    clearTimeout(this.longPress);
+    this.longPress = null;
   }
 
   move(e) {
@@ -114,6 +140,7 @@ class Viewer {
     if (prev === undefined) return;
     const cur = { x: e.clientX, y: e.clientY };
     this.pointers.set(e.pointerId, cur);
+    if (this.tap === null || Math.hypot(cur.x - this.tap.x, cur.y - this.tap.y) > 10) this.cancelLongPress();
 
     if (this.pointers.size === 1) {
       this.tx += cur.x - prev.x;
@@ -137,6 +164,7 @@ class Viewer {
   up(e) {
     this.pointers.delete(e.pointerId);
     this.pinch = null;
+    this.cancelLongPress();
     if (this.tap === null || this.onTap === undefined) return;
     // A thumb on a phone is not a mouse: 8px of drift is an ordinary tap,
     // not a pan, and treating it as one made tapping the map feel dead.

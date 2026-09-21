@@ -7,7 +7,7 @@
 // moves everyone's saved points to the right place instead of stranding them.
 const Store = (() => {
   const DB = 'nv-store';
-  const VERSION = 3;
+  const VERSION = 4;
   let dbPromise = null;
 
   function open() {
@@ -36,6 +36,10 @@ const Store = (() => {
         // copy of it, so a later sync still wins on everything untouched.
         if (!db.objectStoreNames.contains('overrides')) db.createObjectStore('overrides', { keyPath: 'eventId' });
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+        // v4: the hunt. One row per landmark found, holding the coordinates
+        // captured at the moment of finding -- which is the whole point of
+        // it, since those are better than the estimates the map ships with.
+        if (!db.objectStoreNames.contains('finds')) db.createObjectStore('finds', { keyPath: 'questId' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(new Error(`IndexedDB open failed: ${req.error.message}`));
@@ -72,18 +76,32 @@ const Store = (() => {
   // One transaction, one pass. Everything the map and the schedule need to
   // render comes back together rather than in four separate round trips.
   async function load() {
-    const out = await run(['points', 'bundles', 'favorites', 'setlists', 'overrides', 'meta'], 'readonly',
-      (p, b, f, s, o, m) => [asList(p), asList(b), asList(f), asList(s), asList(o), asOne(m, 'schedule')]);
-    const [points, bundles, favorites, setlists, overrides, schedule] = await Promise.all(out);
+    const out = await run(['points', 'bundles', 'favorites', 'setlists', 'overrides', 'meta', 'finds'], 'readonly',
+      (p, b, f, s, o, m, q) => [asList(p), asList(b), asList(f), asList(s), asList(o), asOne(m, 'schedule'), asList(q)]);
+    const [points, bundles, favorites, setlists, overrides, schedule, finds] = await Promise.all(out);
     return {
       points,
       bundles,
       favorites: favorites.map((f) => f.eventId),
       setlists,
       overrides,
+      finds,
       // undefined until a cloud sync has ever happened on this phone.
       cloud: schedule === undefined ? null : schedule
     };
+  }
+
+  // A find and the map point it creates are written together: a find with no
+  // pin, or a pin nobody can trace back to a landmark, is worse than neither.
+  async function putFind(find, point) {
+    await run(['finds', 'points'], 'readwrite', (f, p) => {
+      f.put(find);
+      if (point !== null) p.put(point);
+    });
+  }
+
+  async function deleteFind(questId) {
+    await run(['finds'], 'readwrite', (f) => f.delete(questId));
   }
 
   async function putOverride(override) {
@@ -103,8 +121,41 @@ const Store = (() => {
 
   // The last schedule pulled from the sheet, kept whole so the app opens on
   // it offline instead of falling back to whatever shipped in the build.
-  async function putCloudSchedule(version, at, schedule) {
-    await run(['meta'], 'readwrite', (m) => m.put({ key: 'schedule', version, at, schedule }));
+  async function putCloudSchedule(version, at, schedule, announcements) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'schedule', version, at, schedule, announcements }));
+  }
+
+  // Which announcements this phone has already been shown.
+  async function putSeen(ids) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'seen', ids }));
+  }
+
+  async function putUnlocked(ids) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'badges', ids }));
+  }
+
+  async function getUnlocked() {
+    const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'badges'));
+    const found = await rec;
+    return found === undefined ? [] : found.ids;
+  }
+
+  async function putStats(stats) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'stats', ...stats }));
+  }
+
+  async function getStats() {
+    const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'stats'));
+    const found = await rec;
+    if (found === undefined) return null;
+    const { key, ...stats } = found;
+    return stats;
+  }
+
+  async function getSeen() {
+    const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'seen'));
+    const found = await rec;
+    return found === undefined ? [] : found.ids;
   }
 
   // Returns the state it left the event in, so a caller can repaint one star
@@ -174,7 +225,8 @@ const Store = (() => {
 
   return {
     load, newId, putPoint, putPhoto, getPhoto, deletePoint, toggleFavorite,
-    putOverride, deleteOverride, putOverrides, putCloudSchedule,
+    putOverride, deleteOverride, putOverrides, putCloudSchedule, putSeen, getSeen,
+    putFind, deleteFind, putUnlocked, getUnlocked, putStats, getStats,
     addBundle, deleteBundle
   };
 })();

@@ -16,6 +16,8 @@ const ScheduleUI = (() => {
   let setlists = [];
   let overrides = new Map();
   let cloud = null;
+  let announcements = [];
+  let seen = new Set();
   let editing = null;
   let mergePick = null;
   let visibleTracks = new Set();
@@ -72,6 +74,7 @@ const ScheduleUI = (() => {
     const merged = { eventId, patch: { ...(existing === undefined ? {} : existing.patch), ...patch }, updatedAt: Date.now() };
     overrides.set(eventId, merged);
     await Store.putOverride(merged);
+    QuestsUI.score();
   }
 
   async function clearOverride(eventId) {
@@ -151,6 +154,7 @@ const ScheduleUI = (() => {
       if (on) favorites.add(ev.id);
       else favorites.delete(ev.id);
       render();
+      QuestsUI.score();
     });
     return star;
   }
@@ -446,6 +450,113 @@ const ScheduleUI = (() => {
     }
   }
 
+  // ---------- Announcements ----------
+  function unreadCount() {
+    return announcements.filter((a) => a.status !== 'reverted' && !seen.has(`${a.id}:${a.revision}`)).length;
+  }
+
+  function paintBell() {
+    const n = unreadCount();
+    els.bell.classList.toggle('unread', n > 0);
+    els.bellCount.hidden = n === 0;
+    els.bellCount.textContent = String(n);
+  }
+
+  function fieldLabel(field) {
+    const names = { start: 'Start', end: 'End', track: 'Stage', day: 'Day', title: 'Act', note: 'Note', status: 'Status' };
+    return names[field] === undefined ? field : names[field];
+  }
+
+  // A change reads as the thing people care about -- which act, from what to
+  // what -- not as a row id.
+  function diffLine(change) {
+    const li = document.createElement('li');
+    const ev = data.events.find((e) => e.id === change.eventId);
+    const who = document.createElement('strong');
+    who.textContent = ev === undefined ? change.eventId : ev.title;
+    li.append(who, document.createTextNode(` · ${fieldLabel(change.field)} `));
+    const was = document.createElement('span');
+    was.className = 'was';
+    was.textContent = change.from === '' ? '—' : change.from;
+    const now = document.createElement('span');
+    now.className = 'now';
+    now.textContent = change.to === '' ? '—' : change.to;
+    li.append(was, document.createTextNode(' → '), now);
+    return li;
+  }
+
+  function renderNews() {
+    els.newsList.innerHTML = '';
+    if (announcements.length === 0) {
+      els.newsNote.textContent = cloud === null
+        ? 'Nothing yet. Announcements arrive with a sync when you have signal.'
+        : 'Nothing posted yet.';
+      return;
+    }
+    els.newsNote.textContent = `${announcements.length} post${announcements.length === 1 ? '' : 's'}, newest first.`;
+    for (const a of announcements) {
+      const li = document.createElement('li');
+      const fresh = !seen.has(`${a.id}:${a.revision}`);
+      li.className = `${a.status === 'reverted' ? 'reverted' : ''}${fresh ? ' fresh' : ''}`;
+
+      const h = document.createElement('h3');
+      h.textContent = a.title;
+      if (a.status === 'reverted') {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = 'reverted';
+        h.appendChild(tag);
+      } else if (a.revision > 1) {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = `revision ${a.revision}`;
+        h.appendChild(tag);
+      }
+      li.appendChild(h);
+
+      const when = document.createElement('div');
+      when.className = 'when';
+      const d = new Date(a.at);
+      when.textContent = Number.isNaN(d.getTime()) ? a.at : d.toLocaleString();
+      li.appendChild(when);
+
+      if (a.body !== '') {
+        const body = document.createElement('p');
+        body.className = 'body';
+        body.textContent = a.body;
+        li.appendChild(body);
+      }
+
+      const applied = a.changes.filter((c) => c.status !== 'reverted');
+      if (applied.length > 0) {
+        const diffs = document.createElement('ul');
+        diffs.className = 'diffs';
+        for (const c of applied) diffs.appendChild(diffLine(c));
+        li.appendChild(diffs);
+      }
+
+      if (a.url !== '') {
+        const link = document.createElement('a');
+        link.className = 'src';
+        link.href = a.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'See the original post →';
+        li.appendChild(link);
+      }
+      els.newsList.appendChild(li);
+    }
+  }
+
+  async function openNews() {
+    renderNews();
+    els.news.hidden = false;
+    // Seen is keyed by revision, so a corrected post lights the bell again.
+    seen = new Set(announcements.map((a) => `${a.id}:${a.revision}`));
+    await Store.putSeen([...seen]);
+    paintBell();
+  }
+
   async function syncNow() {
     els.syncNote.textContent = 'Syncing…';
     try {
@@ -455,9 +566,11 @@ const ScheduleUI = (() => {
         throw new Error(body.error);
       }
       const info = await res.json();
-      await Store.putCloudSchedule(info.version, info.at, info.schedule);
-      cloud = { version: info.version, at: info.at, schedule: info.schedule };
+      await Store.putCloudSchedule(info.version, info.at, info.schedule, info.announcements);
+      cloud = { version: info.version, at: info.at, schedule: info.schedule, announcements: info.announcements };
       data = info.schedule;
+      announcements = info.announcements;
+      paintBell();
       els.sync.classList.remove('has-update');
       // Edits survive a sync by design: they sit on top, keyed by event id.
       els.syncNote.textContent = `Synced. ${data.events.length} sets${editedCount() > 0 ? `, your ${editedCount()} change${editedCount() === 1 ? '' : 's'} kept on top` : ''}.`;
@@ -473,6 +586,9 @@ const ScheduleUI = (() => {
     setlists = state.setlists;
     overrides = new Map(state.overrides.map((o) => [o.eventId, o]));
     cloud = state.cloud;
+    announcements = cloud === null || cloud.announcements === undefined ? [] : cloud.announcements;
+    seen = new Set(await Store.getSeen());
+    paintBell();
     // A schedule pulled from the sheet outranks the one that shipped in the
     // build; without one, the build's copy is what there is.
     data = cloud === null ? bundled : cloud.schedule;
@@ -489,7 +605,7 @@ const ScheduleUI = (() => {
   async function init() {
     for (const id of [
       'sched-days', 'sched-tracks', 'sched-friends', 'sched-friends-row', 'sched-grid', 'sched-tba',
-      'sched-mine', 'sched-add', 'sched-sync', 'sched-sync-note', 'sched-editor', 'sched-merge-bar', 'sched-merge-what', 'sched-merge-stop',
+      'sched-mine', 'sched-add', 'sched-sync', 'sched-sync-note', 'bell', 'bell-count', 'news', 'news-list', 'news-note', 'news-close', 'sched-editor', 'sched-merge-bar', 'sched-merge-what', 'sched-merge-stop',
       'sched-ed-title', 'sched-ed-note', 'sched-ed-day', 'sched-ed-track', 'sched-ed-start', 'sched-ed-end',
       'sched-ed-save', 'sched-ed-close', 'sched-ed-cancel', 'sched-ed-reset', 'sched-ed-merge', 'sched-ed-hint'
     ]) {
@@ -527,9 +643,30 @@ const ScheduleUI = (() => {
     els.edMerge.addEventListener('click', startMerge);
     els.mergeStop.addEventListener('click', stopMerge);
 
+    els.bell.addEventListener('click', openNews);
+    els.newsClose.addEventListener('click', () => { els.news.hidden = true; });
+
     await refresh();
     // Quiet: a phone with no signal should not open on an error.
     checkCloud(true);
+
+    // Catching up whenever a signal turns up. There is no way to poll while
+    // the app is closed -- iOS has neither Background Sync nor Periodic
+    // Background Sync, so nothing runs in the background there -- but every
+    // moment the app is actually on screen with a connection is used:
+    // the network coming back, and the app returning to the foreground.
+    let lastCheck = 0;
+    const maybeCheck = () => {
+      if (!navigator.onLine) return;
+      // A phone flapping between bars should not fire a request a second.
+      if (Date.now() - lastCheck < 60000) return;
+      lastCheck = Date.now();
+      checkCloud(true);
+    };
+    window.addEventListener('online', maybeCheck);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) maybeCheck();
+    });
   }
 
   // Shared over QR alongside points and favourites.
@@ -540,5 +677,8 @@ const ScheduleUI = (() => {
     render();
   }
 
-  return { init, refresh, myFavorites, myOverrides, applyOverrides, editedCount, eventTitle, checkCloud };
+  // Badge rules need the sets themselves, to spot a sunrise starring.
+  const events = () => (data === null ? [] : data.events);
+
+  return { init, refresh, myFavorites, myOverrides, applyOverrides, editedCount, eventTitle, checkCloud, unreadCount, events };
 })();

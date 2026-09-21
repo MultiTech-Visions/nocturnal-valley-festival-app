@@ -17,14 +17,82 @@
   <header class="bar">
     <span id="offline" class="badge pending">Saving for offline…</span>
     <span id="gps-status" class="gps-status">GPS off</span>
+    <button id="bell" class="bell" type="button" aria-label="Announcements" title="Announcements">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 16V10.5a6 6 0 1 0-12 0V16l-1.5 2.5h15L18 16z"></path>
+        <path d="M9.5 19.5a2.5 2.5 0 0 0 5 0"></path>
+      </svg>
+      <span id="bell-count" class="bell-count" hidden></span>
+    </button>
   </header>
+
+  <section id="news" class="sheet" hidden>
+    <div class="sidebar-head">
+      <h2>What's changed</h2>
+      <button id="news-close" class="btn small" type="button">Close</button>
+    </div>
+    <p id="news-note" class="hint"></p>
+    <ul id="news-list" class="news"></ul>
+  </section>
 
   <nav class="tabs">
     <button id="tab-map" class="tab on" type="button">Map</button>
     <button id="tab-schedule" class="tab" type="button">Schedule</button>
+    <button id="tab-hunt" class="tab" type="button">Hunt</button>
   </nav>
 
   <main id="map" class="viewer"></main>
+
+  <section id="hunt" class="hunt">
+    <div class="hunt-head">
+      <h2>Treasure hunt</h2>
+      <p id="hunt-progress" class="pt-meta"></p>
+      <div class="bar"><div id="hunt-bar" class="bar-fill"></div></div>
+      <p class="hint">Stand at the thing, press the button. Your phone's own fix is better than the guess the map shipped with — every find makes it sharper for everyone you share with.</p>
+    </div>
+    <ul id="hunt-list" class="quests"></ul>
+
+    <div class="badge-head">
+      <h3>Badge case</h3>
+      <p id="badge-count" class="pt-meta"></p>
+    </div>
+    <div id="badge-case" class="badge-case"></div>
+    <p id="badge-detail" class="hint"></p>
+  </section>
+
+  <div id="badge-toast" class="badge-toast" hidden>
+    <canvas id="badge-toast-art" width="72" height="72"></canvas>
+    <div class="badge-toast-text">
+      <span class="unlocked">Badge unlocked</span>
+      <h3 id="badge-toast-name"></h3>
+      <p id="badge-toast-blurb"></p>
+    </div>
+    <button id="badge-toast-close" class="btn small" type="button">Nice</button>
+  </div>
+
+  <div id="place-bar" class="merge-bar place-bar" hidden>
+    <span id="place-what"></span>
+    <button id="place-stop" class="btn small" type="button">Skip</button>
+  </div>
+
+  <div id="celebrate" class="celebrate" hidden>
+    <div class="celebrate-card">
+      <div id="celebrate-icon" class="celebrate-icon"></div>
+      <h2>Found it!</h2>
+      <h3 id="celebrate-name"></h3>
+      <p id="celebrate-where" class="pt-meta"></p>
+      <img id="celebrate-shot" class="celebrate-shot" alt="" hidden>
+      <label class="photo-pick celebrate-cam">
+        <input id="celebrate-photo" type="file" accept="image/*" capture="environment" hidden>
+        <span class="btn primary">📸 Take the group photo</span>
+      </label>
+      <p id="celebrate-photo-name" class="pt-meta"></p>
+      <div class="cal-row">
+        <button id="celebrate-place" class="btn small" type="button" hidden>Show me on the map</button>
+        <button id="celebrate-done" class="btn small" type="button">Done</button>
+      </div>
+    </div>
+  </div>
 
   <section id="schedule" class="schedule">
     <div class="sched-bar">
@@ -60,6 +128,27 @@
 
   <!-- One footer owns the bottom inset. The hint used to sit outside the
        controls with no inset of its own, so a curved screen ate it. -->
+  <section id="compass" class="compass" hidden>
+    <div id="compass-dial" class="dial">
+      <svg id="compass-rose" class="rose" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46"></circle>
+        <text x="50" y="14" class="n">N</text>
+        <text x="50" y="94" class="c">S</text>
+        <text x="8" y="54" class="c">W</text>
+        <text x="92" y="54" class="c">E</text>
+      </svg>
+      <svg id="compass-needle" class="needle" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M50 8 L64 56 L50 48 L36 56 Z"></path>
+      </svg>
+    </div>
+    <div class="compass-text">
+      <h3 id="compass-name"></h3>
+      <p id="compass-dist" class="dist"></p>
+      <p id="compass-note" class="hint"></p>
+    </div>
+    <button id="compass-close" class="btn small" type="button">Stop</button>
+  </section>
+
   <footer class="dock">
     <div id="hint" class="hint"></div>
     <nav id="controls" class="controls">
@@ -130,6 +219,7 @@
     <p id="detail-note" class="pt-meta"></p>
     <p id="detail-origin" class="pt-meta"></p>
     <div class="cal-row">
+      <button id="detail-guide" class="btn small" type="button">Take me there</button>
       <button id="detail-edit" class="btn small" type="button">Edit</button>
       <button id="detail-delete" class="btn small" type="button">Delete</button>
       <button id="detail-close" class="btn small" type="button">Close</button>
@@ -167,6 +257,7 @@
     <input id="share-name" class="field" type="text" placeholder="Your name or camp (optional)" autocomplete="off">
     <label class="pick-all"><input id="share-schedule" type="checkbox" checked> <span id="share-schedule-label">My schedule</span></label>
     <label class="pick-all"><input id="share-edits" type="checkbox" checked> <span id="share-edits-label">Schedule corrections</span></label>
+    <label class="pick-all"><input id="share-finds" type="checkbox" checked> <span id="share-finds-label">Hunt finds</span></label>
     <ul id="share-list" class="points pick"></ul>
     <div class="cal-row">
       <button id="share-go" class="btn primary" type="button">Show QR</button>
@@ -198,6 +289,9 @@
   <script src="/public/viewer.js"></script>
   <script src="/public/store.js"></script>
   <script src="/public/share.js"></script>
+  <script src="/public/compass.js"></script>
+  <script src="/public/badges.js"></script>
+  <script src="/public/quests.js"></script>
   <script src="/public/schedule.js"></script>
   <script src="/public/points.js"></script>
   <script src="/public/app.js"></script>

@@ -77,7 +77,7 @@ const Share = (() => {
   // ---------- Payload ----------
   // Positional arrays, not objects: at QR scale, repeating a key like "label"
   // forty times costs real frames.
-  async function encode(name, points, photos, favorites, edits) {
+  async function encode(name, points, photos, favorites, edits, finds) {
     const index = new Map();
     const images = [];
     for (const [pointId, blob] of photos) {
@@ -85,7 +85,7 @@ const Share = (() => {
       images.push(await blobToBase64(blob));
     }
     const payload = {
-      v: 3,
+      v: 4,
       n: name,
       p: points.map((pt) => [pt.label, +pt.lat.toFixed(6), +pt.lng.toFixed(6), pt.note, index.has(pt.id) ? index.get(pt.id) : -1]),
       i: images,
@@ -96,7 +96,11 @@ const Share = (() => {
       // Corrections travel as [eventId, patch]: the patch is only the fields
       // somebody actually changed, so a whole evening of retimes is still
       // small enough to stay in one or two frames.
-      o: edits.map((e) => [e.eventId, e.patch])
+      o: edits.map((e) => [e.eventId, e.patch]),
+      // Landmarks found, with the coordinates captured on the spot and the
+      // artwork pixel if they placed it. A pair with both is a calibration
+      // point, which is what actually sharpens the map.
+      q: finds.map((f) => [f.questId, f.lat, f.lng, Math.round(f.accuracy), f.px, f.foundAt])
     };
 
     const raw = enc.encode(JSON.stringify(payload));
@@ -132,13 +136,14 @@ const Share = (() => {
     const body = base64ToBytes(chunks.join(''));
     const raw = flag === 'c' ? await pipe(body, new DecompressionStream('deflate-raw')) : body;
     const payload = JSON.parse(dec.decode(raw));
-    if (payload.v < 1 || payload.v > 3) {
-      throw new Error(`This code is version ${payload.v}; this app speaks 1 to 3. Update both phones.`);
+    if (payload.v < 1 || payload.v > 4) {
+      throw new Error(`This code is version ${payload.v}; this app speaks 1 to 4. Update both phones.`);
     }
     // Older codes predate these fields. Fill them per version rather than
     // defaulting them away, so a malformed current payload still fails loud.
     if (payload.v < 2) payload.f = [];
     if (payload.v < 3) payload.o = [];
+    if (payload.v < 4) payload.q = [];
     return payload;
   }
 

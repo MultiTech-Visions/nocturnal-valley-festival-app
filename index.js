@@ -82,6 +82,10 @@ function authOk(header) {
 const SHEET_ID = process.env.SCHEDULE_SHEET_ID;
 const EVENTS_TAB = process.env.SCHEDULE_EVENTS_TAB;
 const TRACKS_TAB = process.env.SCHEDULE_TRACKS_TAB;
+// Optional tabs the automation writes to. Absent means nobody has set them
+// up yet, which is different from a fetch that failed.
+const ANNOUNCEMENTS_TAB = process.env.SCHEDULE_ANNOUNCEMENTS_TAB === undefined ? 'Announcements' : process.env.SCHEDULE_ANNOUNCEMENTS_TAB;
+const CHANGES_TAB = process.env.SCHEDULE_CHANGES_TAB === undefined ? 'Changes' : process.env.SCHEDULE_CHANGES_TAB;
 const EVENTS_CSV_URL = process.env.SCHEDULE_EVENTS_CSV_URL;
 const TRACKS_CSV_URL = process.env.SCHEDULE_TRACKS_CSV_URL;
 const SHEET_TTL_MS = 60000;
@@ -118,12 +122,16 @@ async function fetchSheetTab(tab) {
     throw new Error('The service account cannot read this sheet. Share the sheet with it as Viewer, and enable the Sheets API.');
   }
   if (res.status === 404) {
-    throw new Error(tab === undefined ? `No sheet with id ${SHEET_ID}.` : `No sheet ${SHEET_ID} with a tab named "${tab}".`);
+    const err = new Error(tab === undefined ? `No sheet with id ${SHEET_ID}.` : `No sheet ${SHEET_ID} with a tab named "${tab}".`);
+    err.missingTab = true;
+    throw err;
   }
   if (!res.ok) throw new Error(`Sheets API said ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const body = await res.json();
   if (body.values === undefined || body.values.length === 0) {
-    throw new Error('That sheet is empty. The first row must be the header: id, title, track, day, start, end, note.');
+    const err = new Error('That sheet is empty. The first row must be the header: id, title, track, day, start, end, note.');
+    err.missingTab = true;
+    throw err;
   }
   // The API trims trailing empty cells per row, so short rows are padded
   // back out to the header width rather than losing their last columns.
@@ -199,6 +207,52 @@ function readTracks() {
   return TRACKS_CSV_URL === undefined ? null : fetchCsv(TRACKS_CSV_URL);
 }
 
+// A tab the automation has not created yet is not a failure: the app should
+// still get its schedule. Anything else still throws.
+async function optionalTab(tab) {
+  if (!usingSheetApi() || tab === '') return [];
+  try {
+    return await fetchSheetTab(tab);
+  } catch (err) {
+    if (err.missingTab === true) return [];
+    throw err;
+  }
+}
+
+// What the organisers posted, newest first, each carrying the edits it made
+// so a phone can show "this moved from 11:30pm to 11:45pm" and so a wrong
+// one can be put back.
+async function readAnnouncements() {
+  const [posts, changes] = await Promise.all([optionalTab(ANNOUNCEMENTS_TAB), optionalTab(CHANGES_TAB)]);
+  const byPost = new Map();
+  for (const c of changes) {
+    if (c.announcementid === '') continue;
+    if (!byPost.has(c.announcementid)) byPost.set(c.announcementid, []);
+    byPost.get(c.announcementid).push({
+      id: c.id,
+      eventId: c.eventid,
+      field: c.field,
+      from: c.oldvalue,
+      to: c.newvalue,
+      status: c.status === '' ? 'applied' : c.status
+    });
+  }
+  return posts
+    .filter((p) => p.id !== '' && p.kind !== 'example')
+    .map((p) => ({
+      id: p.id,
+      at: p.at,
+      kind: p.kind === '' ? 'announcement' : p.kind,
+      title: p.title,
+      body: p.body,
+      url: p.url,
+      status: p.status === '' ? 'active' : p.status,
+      revision: p.revision === '' ? 1 : Number(p.revision),
+      changes: byPost.has(p.id) ? byPost.get(p.id) : []
+    }))
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
 async function buildSchedule() {
   const base = JSON.parse(FILES.get('schedule.json').body.toString('utf8'));
   const rows = await readEvents();
@@ -227,9 +281,15 @@ async function buildSchedule() {
     color: r.color
   }));
 
+  const announcements = await readAnnouncements();
   const schedule = { festival: base.festival, days: base.days, tracks, events };
-  const version = crypto.createHash('sha256').update(JSON.stringify(schedule)).digest('hex').slice(0, 12);
-  return { version, schedule, at: Date.now() };
+  // Announcements are inside the hash, so posting one is itself a reason for
+  // a phone to sync even when no set time moved.
+  const version = crypto.createHash('sha256')
+    .update(JSON.stringify({ schedule, announcements }))
+    .digest('hex')
+    .slice(0, 12);
+  return { version, schedule, announcements, at: Date.now() };
 }
 
 async function getSheet() {
@@ -269,8 +329,17 @@ functions.http('app', (req, res) => {
     getSheet()
       .then((sheet) => {
         res.set('Cache-Control', 'no-store');
-        if (req.query.check === '1') res.json({ version: sheet.version, at: sheet.at });
-        else res.json({ version: sheet.version, at: sheet.at, schedule: sheet.schedule });
+        // The check stays tiny, but carries enough for a bell to light up
+        // without pulling the whole schedule.
+        if (req.query.check === '1') {
+          res.json({
+            version: sheet.version,
+            at: sheet.at,
+            announcements: sheet.announcements.filter((a) => a.status !== 'reverted').length,
+            latest: sheet.announcements.length === 0 ? null : sheet.announcements[0].id
+          });
+        }
+        else res.json({ version: sheet.version, at: sheet.at, schedule: sheet.schedule, announcements: sheet.announcements });
       })
       .catch((err) => res.status(502).json({ error: err.message }));
     return;

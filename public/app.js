@@ -47,14 +47,28 @@ function loadImage(src) {
 // Tabs. The schedule does not depend on the map or its calibration, so it
 // is wired up before anything that can bail out.
 function wireTabs() {
-  const tabs = { map: document.getElementById('tab-map'), schedule: document.getElementById('tab-schedule') };
+  const names = ['map', 'schedule', 'hunt'];
+  const tabs = {};
+  for (const name of names) tabs[name] = document.getElementById(`tab-${name}`);
   const pick = (which) => {
-    document.body.classList.toggle('view-schedule', which === 'schedule');
-    tabs.map.classList.toggle('on', which === 'map');
-    tabs.schedule.classList.toggle('on', which === 'schedule');
+    for (const name of names) {
+      document.body.classList.toggle(`view-${name}`, name !== 'map' && name === which);
+      tabs[name].classList.toggle('on', name === which);
+    }
   };
-  tabs.map.addEventListener('click', () => pick('map'));
-  tabs.schedule.addEventListener('click', () => pick('schedule'));
+  for (const name of names) tabs[name].addEventListener('click', () => pick(name));
+
+  // Egg: the offline badge in the corner is also a door. Five taps.
+  let logoTaps = 0;
+  let logoAt = 0;
+  document.getElementById('offline').addEventListener('click', () => {
+    const now = Date.now();
+    logoTaps = now - logoAt > 1500 ? 1 : logoTaps + 1;
+    logoAt = now;
+    if (logoTaps < 5) return;
+    logoTaps = 0;
+    Badges.bump('logoTaps', 5).then(() => QuestsUI.score());
+  });
 }
 
 async function init() {
@@ -72,7 +86,19 @@ async function init() {
 
   // Taps are forwarded to the points layer, which ignores them unless the
   // user has armed "Drop a point".
-  const viewer = new Viewer(els.map, img, { maxZoom: 6, onTap: (x, y) => PointsUI.onMapTap(x, y) });
+  const viewer = new Viewer(els.map, img, {
+    maxZoom: 6,
+    // A find waiting to be placed on the artwork claims the tap; otherwise
+    // it belongs to whatever the points layer is doing.
+    onTap: (x, y) => {
+      QuestsUI.onMapTap(x, y).then((claimed) => {
+        if (!claimed) PointsUI.onMapTap(x, y);
+      });
+    },
+    // Long press anywhere on the artwork means "take me to this spot",
+    // whether or not there is a saved point on it.
+    onLongPress: (x, y) => PointsUI.onMapLongPress(x, y)
+  });
 
   if (calib.points.length < 3) {
     els.gpsStatus.textContent = 'Map not calibrated yet';
@@ -84,20 +110,33 @@ async function init() {
     return;
   }
   const geo = Geo.build(calib);
+  // The compass rides the map's GPS watch rather than starting its own, and
+  // can ask for it to be switched on when someone picks a destination.
+  Compass.init({ requestGps: () => { if (!wanted) els.gpsToggle.click(); } });
   await PointsUI.init({ viewer, geo });
+  await Badges.init();
+  await QuestsUI.init({
+    viewer,
+    geo,
+    requestGps: () => { if (!wanted) els.gpsToggle.click(); },
+    // A find drops a pin, so the map has to redraw.
+    onChange: () => PointsUI.reload()
+  });
+
+  let watchId = null;
+  let wanted = false;
 
   const dot = document.createElement('div');
   dot.className = 'me';
   const ring = document.createElement('div');
   ring.className = 'me-accuracy';
 
-  let watchId = null;
-  let wanted = false;
   let last = null;
   let centeredOnce = false;
 
   function onFix(pos) {
     const { latitude, longitude, accuracy } = pos.coords;
+    Compass.onFix(pos.coords);
     const p = geo.project(latitude, longitude);
     const offImage = p.x < 0 || p.y < 0 || p.x > calib.image.width || p.y > calib.image.height;
     const x = Math.min(Math.max(p.x, 0), calib.image.width);
