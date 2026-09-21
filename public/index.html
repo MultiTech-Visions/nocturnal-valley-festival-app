@@ -76,6 +76,27 @@
 
   <!-- One footer owns the bottom inset. The hint used to sit outside the
        controls with no inset of its own, so a curved screen ate it. -->
+  <section id="compass" class="compass" hidden>
+    <div id="compass-dial" class="dial">
+      <svg id="compass-rose" class="rose" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46"></circle>
+        <text x="50" y="14" class="n">N</text>
+        <text x="50" y="94" class="c">S</text>
+        <text x="8" y="54" class="c">W</text>
+        <text x="92" y="54" class="c">E</text>
+      </svg>
+      <svg id="compass-needle" class="needle" viewBox="0 0 100 100" aria-hidden="true">
+        <path d="M50 8 L64 56 L50 48 L36 56 Z"></path>
+      </svg>
+    </div>
+    <div class="compass-text">
+      <h3 id="compass-name"></h3>
+      <p id="compass-dist" class="dist"></p>
+      <p id="compass-note" class="hint"></p>
+    </div>
+    <button id="compass-close" class="btn small" type="button">Stop</button>
+  </section>
+
   <footer class="dock">
     <div id="hint" class="hint"></div>
     <nav id="controls" class="controls">
@@ -146,6 +167,7 @@
     <p id="detail-note" class="pt-meta"></p>
     <p id="detail-origin" class="pt-meta"></p>
     <div class="cal-row">
+      <button id="detail-guide" class="btn small" type="button">Take me there</button>
       <button id="detail-edit" class="btn small" type="button">Edit</button>
       <button id="detail-delete" class="btn small" type="button">Delete</button>
       <button id="detail-close" class="btn small" type="button">Close</button>
@@ -214,6 +236,7 @@
   <script src="/public/viewer.js"></script>
   <script src="/public/store.js"></script>
   <script src="/public/share.js"></script>
+  <script src="/public/compass.js"></script>
   <script src="/public/schedule.js"></script>
   <script src="/public/points.js"></script>
   <script src="/public/app.js"></script>

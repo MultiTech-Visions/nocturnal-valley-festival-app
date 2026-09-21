@@ -72,7 +72,13 @@ async function init() {
 
   // Taps are forwarded to the points layer, which ignores them unless the
   // user has armed "Drop a point".
-  const viewer = new Viewer(els.map, img, { maxZoom: 6, onTap: (x, y) => PointsUI.onMapTap(x, y) });
+  const viewer = new Viewer(els.map, img, {
+    maxZoom: 6,
+    onTap: (x, y) => PointsUI.onMapTap(x, y),
+    // Long press anywhere on the artwork means "take me to this spot",
+    // whether or not there is a saved point on it.
+    onLongPress: (x, y) => PointsUI.onMapLongPress(x, y)
+  });
 
   if (calib.points.length < 3) {
     els.gpsStatus.textContent = 'Map not calibrated yet';
@@ -84,20 +90,25 @@ async function init() {
     return;
   }
   const geo = Geo.build(calib);
+  // The compass rides the map's GPS watch rather than starting its own, and
+  // can ask for it to be switched on when someone picks a destination.
+  Compass.init({ requestGps: () => { if (!wanted) els.gpsToggle.click(); } });
   await PointsUI.init({ viewer, geo });
+
+  let watchId = null;
+  let wanted = false;
 
   const dot = document.createElement('div');
   dot.className = 'me';
   const ring = document.createElement('div');
   ring.className = 'me-accuracy';
 
-  let watchId = null;
-  let wanted = false;
   let last = null;
   let centeredOnce = false;
 
   function onFix(pos) {
     const { latitude, longitude, accuracy } = pos.coords;
+    Compass.onFix(pos.coords);
     const p = geo.project(latitude, longitude);
     const offImage = p.x < 0 || p.y < 0 || p.x > calib.image.width || p.y > calib.image.height;
     const x = Math.min(Math.max(p.x, 0), calib.image.width);

@@ -232,6 +232,26 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
    and the pins become untappable. */
 .viewer > div.pin { pointer-events: auto; z-index: 2; }
 
+/* ---------- Compass ---------- */
+.compass {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  background: var(--night); border-top: 2px solid #4a3378;
+}
+.dial { position: relative; width: 64px; height: 64px; flex: none; }
+.dial svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rose circle { fill: var(--deep); stroke: #4a3378; stroke-width: 3; }
+.rose text { font-size: 15px; font-weight: 800; text-anchor: middle; fill: var(--dim); }
+.rose .n { fill: var(--ember); }
+.needle path { fill: var(--owl); }
+/* The needle is the thing that moves; easing it stops the jitter a
+   magnetometer produces from reading as the target wandering. */
+.needle, .rose { transition: transform 0.25s ease-out; }
+.dial.north-up .needle path { fill: var(--creek); }
+.compass-text { flex: 1; min-width: 0; }
+.compass-text h3 { margin: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compass-text .dist { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: var(--owl); }
+.compass-text .hint { margin: 2px 0 0; font-size: 11px; }
+
 /* ---------- Announcements ---------- */
 .bell { position: relative; padding: 4px; border: none; background: transparent; color: var(--dim); cursor: pointer; }
 .bell svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

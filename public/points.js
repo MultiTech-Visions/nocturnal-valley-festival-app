@@ -198,6 +198,27 @@ const PointsUI = (() => {
     }
   }
 
+  // Long press on the artwork: guide me to that spot, saved point or not.
+  // A saved point under the finger lends its name; otherwise the coordinates
+  // are enough to walk towards.
+  async function onMapLongPress(x, y) {
+    if (draft !== null) return;
+    const here = geo.unproject(x, y);
+    let label = 'Dropped spot';
+    let best = 40;
+    for (const pt of state.points) {
+      const p = geo.project(pt.lat, pt.lng);
+      const away = Math.hypot(p.x - x, p.y - y);
+      if (away < best) {
+        best = away;
+        label = pt.label;
+      }
+    }
+    closeCallout();
+    await Compass.setTarget({ lat: here.lat, lng: here.lng, label });
+    status(here.inMesh ? '' : 'That spot is outside the calibrated area, so the direction is a rough estimate.');
+  }
+
   // Called by app.js on every map tap; only moves a point already being placed.
   function onMapTap(x, y) {
     if (draft === null) return;
@@ -543,7 +564,7 @@ const PointsUI = (() => {
 
     for (const id of [
       'scrim', 'hint', 'drop', 'share', 'controls', 'confirm-bar', 'place-ok', 'place-cancel', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
-      'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-edit', 'detail-delete', 'detail-close',
+      'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-guide', 'detail-edit', 'detail-delete', 'detail-close',
       'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'lightbox', 'lightbox-img',
       'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-edits', 'share-edits-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
       'qr', 'qr-count', 'qr-done', 'video', 'scan-canvas', 'scan-count', 'scan-cancel'
@@ -586,6 +607,11 @@ const PointsUI = (() => {
     els.formSave.addEventListener('click', saveForm);
     els.formCancel.addEventListener('click', () => show(null));
 
+    els.detailGuide.addEventListener('click', async () => {
+      const to = { lat: editing.lat, lng: editing.lng, label: editing.label };
+      closeCallout();
+      await Compass.setTarget(to);
+    });
     els.detailClose.addEventListener('click', closeCallout);
     els.detailEdit.addEventListener('click', () => {
       closeCallout();
@@ -631,5 +657,5 @@ const PointsUI = (() => {
     return reload();
   }
 
-  return { init, onMapTap };
+  return { init, onMapTap, onMapLongPress };
 })();
