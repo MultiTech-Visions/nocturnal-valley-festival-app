@@ -1,9 +1,18 @@
-// Bump VERSION on every deploy that changes any file below. The browser
-// only reinstalls the service worker when this file's bytes change.
-// app.css is on the list and this worker's scope is "/", so it serves the
-// calibration page's stylesheet too: skip the bump and /calibrate keeps
-// rendering against the old CSS no matter how many times you deploy.
-const VERSION = '2026-09-21c';
+// Offline cache for the app shell.
+//
+// VERSION names the cache and is what makes the browser reinstall this
+// worker: only a change to THIS file's bytes triggers an update check.
+// Bump it whenever the asset list below changes.
+//
+// It is deliberately not the only thing keeping clients current. A deploy
+// that lands sw.js before the files it caches -- or a bump forgotten
+// entirely -- used to strand a phone on an old build with no way back
+// short of unregistering the worker by hand. So every asset below is now
+// served cache-first and revalidated in the background: the cached copy
+// answers instantly and works offline, while a fresh copy is fetched and
+// stored for the next load. A stale client heals itself on the following
+// reload instead of waiting for someone to notice.
+const VERSION = '2026-09-21d';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',
@@ -24,9 +33,15 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  // addAll is all-or-nothing: one failed asset fails the install, so the
-  // app never reports "ready" with a half-filled cache.
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      // cache: 'reload' bypasses the browser's own HTTP cache, so a fresh
+      // install can't fill itself with the copies it was meant to replace.
+      // addAll stays all-or-nothing: one failed asset fails the install, so
+      // the app never reports "ready" with a half-filled cache.
+      .then((c) => c.addAll(ASSETS.map((a) => new Request(a, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -39,9 +54,35 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || !ASSETS.includes(url.pathname)) return;
+  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  // /calibrate is password-protected and must never be cached: a cached copy
+  // would be served without the server ever seeing the credentials again.
+  if (!ASSETS.includes(url.pathname)) return;
+
   e.respondWith(
-    caches.match(url.pathname, { cacheName: CACHE }).then((hit) => (hit !== undefined ? hit : fetch(e.request)))
+    caches.open(CACHE).then(async (cache) => {
+      const hit = await cache.match(url.pathname);
+
+      const fresh = fetch(e.request)
+        .then((res) => {
+          // Only a real 200 replaces a good cached copy. An error page or a
+          // redirect to a login screen must not become the offline map.
+          if (res.ok && res.status === 200) cache.put(url.pathname, res.clone());
+          return res;
+        })
+        .catch((err) => {
+          // Offline is the normal case here, not a fault: the cached copy
+          // below is the answer. Rethrow only when there is nothing cached.
+          if (hit === undefined) throw err;
+          return null;
+        });
+
+      if (hit === undefined) return fresh;
+      // Don't make the page wait on the network; let the refresh finish
+      // after the response has already gone out.
+      e.waitUntil(fresh);
+      return hit;
+    })
   );
 });
 
