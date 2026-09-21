@@ -42,13 +42,20 @@ const confirmBubble = (() => {
 
     const text = document.createElement('span');
     text.textContent = message;
-    el.appendChild(text);
+
+    // Step one: a plain Delete. Step two: the same bubble, rebuilt as a
+    // green check and a red X. Two presses to lose a point you may have
+    // spent a while placing.
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'confirm-btn del';
+    del.textContent = 'Delete';
 
     const yes = document.createElement('button');
     yes.type = 'button';
     yes.className = 'confirm-btn yes';
     yes.textContent = '\u2713';
-    yes.title = 'Delete';
+    yes.title = 'Confirm delete';
     yes.addEventListener('click', () => {
       close();
       onYes();
@@ -61,14 +68,32 @@ const confirmBubble = (() => {
     no.title = 'Keep';
     no.addEventListener('click', close);
 
-    el.append(yes, no);
-    document.body.appendChild(el);
+    del.addEventListener('click', () => {
+      del.remove();
+      text.textContent = 'Sure?';
+      el.append(yes, no);
+      // The bubble changed width, so re-anchor before it looks off-centre.
+      place(el, anchorEl);
+      yes.focus();
+    });
 
+    el.append(text, del);
+    document.body.appendChild(el);
+    place(el, anchorEl);
+    open = { el, anchorEl };
+    del.focus();
+  }
+
+  // Anchored above the dot, centred on it, with the arrow pointing down at
+  // it. Flips below when there is no room above, so a point near the top of
+  // a pane doesn't push the bubble off screen.
+  function place(el, anchorEl) {
     const r = anchorEl.getBoundingClientRect();
+    const h = el.offsetHeight;
+    const above = r.top - 10 >= h;
+    el.classList.toggle('below', !above);
     el.style.left = `${r.left + r.width / 2}px`;
-    el.style.top = `${r.top - 8}px`;
-    open = { el };
-    yes.focus();
+    el.style.top = above ? `${r.top - 10}px` : `${r.bottom + 10}px`;
   }
 
   // Capture phase so a press anywhere else dismisses before it does its own
