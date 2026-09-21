@@ -24,12 +24,75 @@
   <nav class="controls">
     <button id="gps-toggle" class="btn primary" type="button">Show my location</button>
     <button id="recenter" class="btn" type="button" disabled>Center on me</button>
+    <button id="drop" class="btn" type="button">Drop a point</button>
+    <button id="share" class="btn" type="button">Share</button>
   </nav>
+  <div id="hint" class="hint"></div>
+
+  <div id="scrim" class="scrim" hidden></div>
+
+  <section id="point-form" class="sheet" hidden>
+    <h2>Name this point</h2>
+    <input id="label" class="field" type="text" placeholder="e.g. Nebula river bend" autocomplete="off">
+    <textarea id="note" class="field" rows="2" placeholder="Note (optional)"></textarea>
+    <label class="photo-pick">
+      <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+      <span class="btn">Take or choose a photo</span>
+      <span id="photo-name" class="pt-meta">No photo</span>
+    </label>
+    <div class="cal-row">
+      <button id="form-save" class="btn primary" type="button">Save point</button>
+      <button id="form-cancel" class="btn" type="button">Cancel</button>
+    </div>
+  </section>
+
+  <section id="point-detail" class="sheet" hidden>
+    <h2 id="detail-name"></h2>
+    <img id="detail-photo" class="detail-photo" alt="" hidden>
+    <p id="detail-note" class="pt-meta"></p>
+    <p id="detail-origin" class="pt-meta"></p>
+    <div class="cal-row">
+      <button id="detail-edit" class="btn" type="button">Edit</button>
+      <button id="detail-delete" class="btn" type="button">Delete</button>
+      <button id="detail-close" class="btn" type="button">Close</button>
+    </div>
+  </section>
+
+  <section id="share-panel" class="sheet" hidden>
+    <h2>Share points</h2>
+    <input id="share-name" class="field" type="text" placeholder="Name this set (optional)" autocomplete="off">
+    <ul id="share-list" class="points pick"></ul>
+    <div class="cal-row">
+      <button id="share-go" class="btn primary" type="button">Show QR</button>
+      <button id="receive-go" class="btn" type="button">Receive</button>
+      <button id="share-close" class="btn" type="button">Close</button>
+    </div>
+    <h2>Received</h2>
+    <ul id="bundle-list" class="points"></ul>
+  </section>
+
+  <section id="qr-view" class="sheet full" hidden>
+    <canvas id="qr" width="720" height="720"></canvas>
+    <p id="qr-count" class="qr-count"></p>
+    <button id="qr-done" class="btn" type="button">Done</button>
+  </section>
+
+  <section id="scan-view" class="sheet full scan" hidden>
+    <video id="video" playsinline muted></video>
+    <canvas id="scan-canvas" hidden></canvas>
+    <p id="scan-count" class="qr-count"></p>
+    <button id="scan-cancel" class="btn" type="button">Cancel</button>
+  </section>
 
   <div id="fatal" class="fatal" hidden></div>
 
+  <script src="/public/qrcode.min.js"></script>
+  <script src="/public/jsQR.min.js"></script>
   <script src="/public/geo.js"></script>
   <script src="/public/viewer.js"></script>
+  <script src="/public/store.js"></script>
+  <script src="/public/share.js"></script>
+  <script src="/public/points.js"></script>
   <script src="/public/app.js"></script>
 </body>
 </html>

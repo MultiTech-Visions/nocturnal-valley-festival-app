@@ -12,6 +12,10 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--deep); color: var(--road); font-family: var(--font); }
 button { font: inherit; }
+/* display:flex on .sheet and friends outranks the hidden attribute's own
+   display:none, which leaves "hidden" panels covering the map and eating
+   every tap. Settle it once, for every element that carries the attribute. */
+[hidden] { display: none !important; }
 
 /* ---------- Viewer (shared) ---------- */
 .viewer { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; background: var(--deep); cursor: grab; }
@@ -136,6 +140,52 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
 .confirm-btn.yes { background: #2ea043; }
 .confirm-btn.no { background: #d1242f; }
 .confirm-btn:focus-visible { outline: 3px solid var(--owl); outline-offset: 2px; }
+
+/* ---------- Dropped points ---------- */
+.pin { display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: auto; cursor: pointer; }
+.pin-head {
+  width: 16px; height: 16px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+  background: var(--ember); border: 2px solid #fff;
+}
+.pin.shared .pin-head { background: var(--creek); }
+.pin-label {
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 1px 6px; border-radius: 8px; font-size: 11px; font-weight: 700;
+  background: rgba(18, 8, 36, 0.85); color: var(--road);
+}
+/* Must out-specify .viewer > div:not(.viewer-layer), which turns pointer
+   events off for the whole marker layer; a plain .pin selector loses to it
+   and the pins become untappable. */
+.viewer > div.pin { pointer-events: auto; z-index: 2; }
+
+/* ---------- Sheets ---------- */
+.scrim { position: fixed; inset: 0; z-index: 900; background: rgba(0, 0, 0, 0.6); }
+.sheet {
+  position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 85vh; overflow-y: auto; padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: var(--night); border-top: 2px solid #4a3378;
+  border-radius: 16px 16px 0 0;
+}
+.sheet h2 { margin: 0; font-size: 16px; }
+.sheet.full {
+  top: 0; border-radius: 0; max-height: none; align-items: center; justify-content: center;
+}
+.photo-pick { display: flex; align-items: center; gap: 10px; }
+.detail-photo { width: 100%; border-radius: 12px; }
+.points.pick li { cursor: default; }
+.points .empty { color: var(--dim); list-style: none; }
+.qr-count { margin: 0; font-size: 14px; font-weight: 700; text-align: center; }
+#qr { width: min(88vw, 88vh); height: auto; image-rendering: pixelated; border-radius: 8px; }
+.scan video { width: 100%; max-height: 70vh; border-radius: 12px; background: #000; }
+
+/* The QR screen goes white edge to edge. No browser can raise the backlight
+   -- there is no such API -- so the next best thing is emitting as much
+   light as the panel can at whatever brightness the phone is set to. */
+body.bright { background: #fff; }
+body.bright .sheet.full { background: #fff; color: #111; }
+body.bright .qr-count { color: #111; }
 
 @media (max-width: 760px) {
   body.cal { grid-template-columns: 1fr; grid-template-rows: 70vh auto; height: auto; }

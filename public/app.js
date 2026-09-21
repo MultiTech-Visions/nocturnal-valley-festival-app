@@ -12,6 +12,8 @@ const els = {
   gpsStatus: document.getElementById('gps-status'),
   gpsToggle: document.getElementById('gps-toggle'),
   recenter: document.getElementById('recenter'),
+  drop: document.getElementById('drop'),
+  share: document.getElementById('share'),
   map: document.getElementById('map')
 };
 
@@ -52,14 +54,21 @@ async function init() {
     throw new Error(`Map is ${img.naturalWidth}×${img.naturalHeight} but calibration expects ${calib.image.width}×${calib.image.height}. Recalibrate.`);
   }
 
-  const viewer = new Viewer(els.map, img, { maxZoom: 6 });
+  // Taps are forwarded to the points layer, which ignores them unless the
+  // user has armed "Drop a point".
+  const viewer = new Viewer(els.map, img, { maxZoom: 6, onTap: (x, y) => PointsUI.onMapTap(x, y) });
 
   if (calib.points.length < 3) {
     els.gpsStatus.textContent = 'Map not calibrated yet';
     els.gpsToggle.disabled = true;
+    // Dropping and sharing points both need a transform between GPS and the
+    // artwork, so they stay off until the map is calibrated.
+    els.drop.disabled = true;
+    els.share.disabled = true;
     return;
   }
   const geo = Geo.build(calib);
+  await PointsUI.init({ viewer, geo });
 
   const dot = document.createElement('div');
   dot.className = 'me';
