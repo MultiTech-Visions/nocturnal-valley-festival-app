@@ -235,19 +235,59 @@ async function init() {
       const askRemove = (anchorEl) => confirmBubble.ask(anchorEl, `Delete ${p.label}?`, remove);
 
       const dot = dotEl('fixed', n);
-      // The dot lives inside the viewer container, so its events would
-      // otherwise bubble into the pan/tap handling and drop a pending pixel.
-      dot.addEventListener('pointerdown', (e) => e.stopPropagation());
-      dot.addEventListener('pointerup', (e) => e.stopPropagation());
-      dot.addEventListener('click', () => askRemove(dot));
+      // The dot lives inside the viewer container, so every event it sees has
+      // to be stopped: otherwise the viewer reads the press as a pan and the
+      // release as a tap, dropping a new pending pixel under the point you
+      // were trying to nudge.
+      let drag = null;
+      dot.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        dot.setPointerCapture(e.pointerId);
+        drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+      });
+      dot.addEventListener('pointermove', (e) => {
+        if (drag === null || e.pointerId !== drag.id) return;
+        e.stopPropagation();
+        // A few pixels of slop, so a click that trembles is still a click.
+        if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 4) return;
+        drag.moved = true;
+        const r = viewer.el.getBoundingClientRect();
+        const [ix, iy] = viewer.toImage(e.clientX - r.left, e.clientY - r.top);
+        p.px = [
+          Math.round(Math.min(Math.max(ix, 0), calib.image.width)),
+          Math.round(Math.min(Math.max(iy, 0), calib.image.height))
+        ];
+        viewer.setMarker(`pt-${i}`, { x: p.px[0], y: p.px[1], el: dot });
+      });
+      dot.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        if (drag === null) return;
+        const moved = drag.moved;
+        drag = null;
+        // A press that went nowhere is a click: offer to delete instead.
+        if (!moved) {
+          askRemove(dot);
+          return;
+        }
+        save();
+        render();
+      });
       viewer.setMarker(`pt-${i}`, { x: p.px[0], y: p.px[1], el: dot });
 
       const satMarker = L.marker(p.ll, {
+        draggable: true,
         icon: L.divIcon({ className: '', html: `<div class="cal-dot fixed sat">${n}</div>`, iconSize: [0, 0] })
       }).addTo(satLayer);
+      satMarker.on('dragstart', () => confirmBubble.close());
+      satMarker.on('dragend', () => {
+        const ll = satMarker.getLatLng();
+        p.ll = [+ll.lat.toFixed(7), +ll.lng.toFixed(7)];
+        save();
+        render();
+      });
       // Leaflet stops marker clicks from reaching the map, so this can't also
-      // register a satellite pick.
-      // Anchor on the dot itself: the Leaflet icon box is 0x0 by design.
+      // register a satellite pick, and it suppresses the click that ends a
+      // drag. Anchor on the dot itself: the Leaflet icon box is 0x0 by design.
       satMarker.on('click', () => askRemove(satMarker.getElement().firstElementChild));
 
       const li = document.createElement('li');

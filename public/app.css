@@ -100,7 +100,8 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
 .cal-dot.sat { transform: translate(-50%, -50%); }
 /* Placed points are the only clickable dots; the viewer blanket-disables
    pointer events on its marker layer, so opt these back in. */
-.viewer > .cal-dot.fixed, .cal-dot.fixed.sat { pointer-events: auto; cursor: pointer; }
+.viewer > .cal-dot.fixed, .cal-dot.fixed.sat { pointer-events: auto; cursor: grab; touch-action: none; }
+.viewer > .cal-dot.fixed:active, .cal-dot.fixed.sat:active { cursor: grabbing; }
 
 /* Inline delete confirm: a speech bubble anchored to its dot, never a
    dialog. .below flips the arrow for points near the top of a pane. */
