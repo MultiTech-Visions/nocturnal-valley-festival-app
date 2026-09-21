@@ -130,6 +130,28 @@ const Store = (() => {
     await run(['meta'], 'readwrite', (m) => m.put({ key: 'seen', ids }));
   }
 
+  async function putUnlocked(ids) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'badges', ids }));
+  }
+
+  async function getUnlocked() {
+    const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'badges'));
+    const found = await rec;
+    return found === undefined ? [] : found.ids;
+  }
+
+  async function putStats(stats) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'stats', ...stats }));
+  }
+
+  async function getStats() {
+    const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'stats'));
+    const found = await rec;
+    if (found === undefined) return null;
+    const { key, ...stats } = found;
+    return stats;
+  }
+
   async function getSeen() {
     const rec = await run(['meta'], 'readonly', (m) => asOne(m, 'seen'));
     const found = await rec;
@@ -204,7 +226,7 @@ const Store = (() => {
   return {
     load, newId, putPoint, putPhoto, getPhoto, deletePoint, toggleFavorite,
     putOverride, deleteOverride, putOverrides, putCloudSchedule, putSeen, getSeen,
-    putFind, deleteFind,
+    putFind, deleteFind, putUnlocked, getUnlocked, putStats, getStats,
     addBundle, deleteBundle
   };
 })();

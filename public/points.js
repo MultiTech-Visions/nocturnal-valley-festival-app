@@ -201,6 +201,23 @@ const PointsUI = (() => {
   // Long press on the artwork: guide me to that spot, saved point or not.
   // A saved point under the finger lends its name; otherwise the coordinates
   // are enough to walk towards.
+  // Egg: the owl drawn on the artwork notices being poked. Seven taps in its
+  // corner of the map, which is the lower middle where it is drawn.
+  let owlTaps = 0;
+  let owlAt = 0;
+  function pokeOwl(x, y) {
+    const w = viewer.iw;
+    const h = viewer.ih;
+    const inOwl = x > w * 0.56 && x < w * 0.86 && y > h * 0.62 && y < h * 0.95;
+    if (!inOwl) return;
+    const now = Date.now();
+    owlTaps = now - owlAt > 2000 ? 1 : owlTaps + 1;
+    owlAt = now;
+    if (owlTaps < 7) return;
+    owlTaps = 0;
+    Badges.bump('owlTaps', 7).then(() => QuestsUI.score());
+  }
+
   async function onMapLongPress(x, y) {
     if (draft !== null) return;
     const here = geo.unproject(x, y);
@@ -221,6 +238,7 @@ const PointsUI = (() => {
 
   // Called by app.js on every map tap; only moves a point already being placed.
   function onMapTap(x, y) {
+    pokeOwl(x, y);
     if (draft === null) return;
     const here = geo.unproject(x, y);
     setDraft(here.lat, here.lng, false);
@@ -476,6 +494,8 @@ const PointsUI = (() => {
 
     const name = els.shareName.value.trim() === '' ? 'Shared points' : els.shareName.value.trim();
     const { frames } = await Share.encode(name, points, photos, favorites, edits, finds);
+    await Badges.bump('shares');
+    await QuestsUI.score();
     show('qr-view');
     await goBright();
     stopPlaying = Share.play(els.qr, frames, (i, total) => {

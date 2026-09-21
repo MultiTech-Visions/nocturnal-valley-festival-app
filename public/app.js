@@ -57,6 +57,18 @@ function wireTabs() {
     }
   };
   for (const name of names) tabs[name].addEventListener('click', () => pick(name));
+
+  // Egg: the offline badge in the corner is also a door. Five taps.
+  let logoTaps = 0;
+  let logoAt = 0;
+  document.getElementById('offline').addEventListener('click', () => {
+    const now = Date.now();
+    logoTaps = now - logoAt > 1500 ? 1 : logoTaps + 1;
+    logoAt = now;
+    if (logoTaps < 5) return;
+    logoTaps = 0;
+    Badges.bump('logoTaps', 5).then(() => QuestsUI.score());
+  });
 }
 
 async function init() {
@@ -102,6 +114,7 @@ async function init() {
   // can ask for it to be switched on when someone picks a destination.
   Compass.init({ requestGps: () => { if (!wanted) els.gpsToggle.click(); } });
   await PointsUI.init({ viewer, geo });
+  await Badges.init();
   await QuestsUI.init({
     viewer,
     geo,

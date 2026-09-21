@@ -74,6 +74,7 @@ const ScheduleUI = (() => {
     const merged = { eventId, patch: { ...(existing === undefined ? {} : existing.patch), ...patch }, updatedAt: Date.now() };
     overrides.set(eventId, merged);
     await Store.putOverride(merged);
+    QuestsUI.score();
   }
 
   async function clearOverride(eventId) {
@@ -153,6 +154,7 @@ const ScheduleUI = (() => {
       if (on) favorites.add(ev.id);
       else favorites.delete(ev.id);
       render();
+      QuestsUI.score();
     });
     return star;
   }
@@ -675,5 +677,8 @@ const ScheduleUI = (() => {
     render();
   }
 
-  return { init, refresh, myFavorites, myOverrides, applyOverrides, editedCount, eventTitle, checkCloud, unreadCount };
+  // Badge rules need the sets themselves, to spot a sunrise starring.
+  const events = () => (data === null ? [] : data.events);
+
+  return { init, refresh, myFavorites, myOverrides, applyOverrides, editedCount, eventTitle, checkCloud, unreadCount, events };
 })();

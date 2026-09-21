@@ -124,6 +124,8 @@ const Compass = (() => {
   // ---------- Public ----------
   async function setTarget(next) {
     target = next;
+    // Using the compass at all is worth a badge; scoring is the hunt's job.
+    Badges.bump('compass').then(() => QuestsUI.score());
     els.panel.hidden = false;
     paint();
     // Both are gesture-sensitive on some platforms, so they ride the tap

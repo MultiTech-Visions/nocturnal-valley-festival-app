@@ -1,0 +1,210 @@
+{
+  "_readme": "Pixel art as data. Each sprite is 12 rows of 12 characters; a character is a palette key, '.' is transparent. Rendered to a canvas with no smoothing, so it stays crisp at any size and costs nothing to ship. Rules are named in badges.js -- add a badge here, it appears in the case.",
+  "palette": {
+    "K": "#120824",
+    "W": "#ffffff",
+    "Y": "#f6d31b",
+    "O": "#f08a24",
+    "B": "#35a7ff",
+    "P": "#b06bff",
+    "G": "#4ad6a0",
+    "R": "#d1242f",
+    "S": "#b7a6d6",
+    "D": "#3a2560",
+    "N": "#f3ead0"
+  },
+  "badges": [
+    {
+      "id": "b-first", "name": "First Light", "blurb": "Found your first landmark.",
+      "rule": { "type": "finds", "n": 1 },
+      "art": [
+        "....KKKK....", "..KKYYYYKK..", ".KYYWYYWYYK.", ".KYWKYYKWYK.",
+        ".KYYYYYYYYK.", ".KYYOOOOYYK.", "..KYYOOYYK..", "..KYYYYYYK..",
+        "...KOKKOK...", "....K..K....", "...KK..KK...", "............"
+      ]
+    },
+    {
+      "id": "b-five", "name": "Pathfinder", "blurb": "Five landmarks down.",
+      "rule": { "type": "finds", "n": 5 },
+      "art": [
+        "....KKKK....", "...KBBBBK...", "..KBWWWWBK..", "..KBWKKWBK..",
+        "..KBWWWWBK..", "...KBBBBK...", "....KBBK....", "....KBBK....",
+        "...KBBBBK...", "..KBBBBBBK..", "...KKKKKK...", "............"
+      ]
+    },
+    {
+      "id": "b-ten", "name": "Valley Walker", "blurb": "Ten landmarks found.",
+      "rule": { "type": "finds", "n": 10 },
+      "art": [
+        "......K.....", ".....KGK....", "....KGGGK...", "...KGGGGGK..",
+        "..KGGGGGGGK.", ".KGGGGGGGGGK", "..KKKKKKKKK.", "......KK....",
+        "......KK....", ".....KOOK...", "....KOOOOK..", ".....KKKK..."
+      ]
+    },
+    {
+      "id": "b-twenty", "name": "Surveyor", "blurb": "Twenty landmarks. Serious business.",
+      "rule": { "type": "finds", "n": 20 },
+      "art": [
+        "..KKKKKKKK..", ".KPPPPPPPPK.", ".KPWWPPWWPK.", ".KPWKPPKWPK.",
+        ".KPPPPPPPPK.", ".KPPKKKKPPK.", ".KPPPPPPPPK.", "..KPPPPPPK..",
+        "...KKPPKK...", "....KPPK....", "...KPPPPK...", "....KKKK...."
+      ]
+    },
+    {
+      "id": "b-all", "name": "Cartographer", "blurb": "Every last one. The map is yours.",
+      "rule": { "type": "all_finds" },
+      "art": [
+        "...K.KK.K...", "..KYKYYKYK..", "..KYYYYYYK..", ".KYYWYYWYYK.",
+        ".KYYYYYYYYK.", ".KYOYYYYOYK.", ".KYYOOOOYYK.", "..KYYYYYYK..",
+        "..KKKKKKKK..", ".KWWWWWWWWK.", ".KWKWKWKWKK.", "..KKKKKKKK.."
+      ]
+    },
+    {
+      "id": "b-place1", "name": "Ground Truth", "blurb": "Put a find on the artwork. That one fixes the map.",
+      "rule": { "type": "placed", "n": 1 },
+      "art": [
+        "....KKKK....", "...KRRRRK...", "..KRRWWRRK..", "..KRWKKWRK..",
+        "..KRRWWRRK..", "..KRRRRRRK..", "...KRRRRK...", "....KRRK....",
+        ".....KK.....", "....KSSK....", "...KSSSSK...", "....KKKK...."
+      ]
+    },
+    {
+      "id": "b-place5", "name": "Triangulator", "blurb": "Five finds placed. The map is measurably better.",
+      "rule": { "type": "placed", "n": 5 },
+      "art": [
+        ".....K......", "....KBK.....", "...KBBBK....", "..KBBBBBK...",
+        ".KBBBBBBBK..", "KBBBBBBBBBK.", ".KKKKKKKKK..", "..KYK..KYK..",
+        ".KYYYKKYYYK.", "..KYK..KYK..", "............", "............"
+      ]
+    },
+    {
+      "id": "b-photo", "name": "Say Cheese", "blurb": "Took a commemorative photo.",
+      "rule": { "type": "photo" },
+      "art": [
+        "............", "....KKKK....", "..KKSSSSKK..", ".KSSSSSSSSK.",
+        ".KSSKWWKSSK.", ".KSKWBBWKSK.", ".KSKWBBWKSK.", ".KSSKWWKSSK.",
+        ".KSSSSSSSSK.", "..KKKKKKKK..", "............", "............"
+      ]
+    },
+    {
+      "id": "b-sweep-landmarks", "name": "Landmark Sweep", "blurb": "Every landmark in the legend.",
+      "rule": { "type": "category", "id": "landmarks" },
+      "art": [
+        ".....KK.....", "....KYYK....", "...KYYYYK...", "..KYYYYYYK..",
+        ".KYYYYYYYYK.", "KYYYYYYYYYYK", ".KKYYYYYYKK.", "...KYYYYK...",
+        "..KYYKKYYK..", ".KYYK..KYYK.", "..KK....KK..", "............"
+      ]
+    },
+    {
+      "id": "b-sweep-services", "name": "Know Your Exits", "blurb": "Every service on the map.",
+      "rule": { "type": "category", "id": "services" },
+      "art": [
+        "..KKKKKKKK..", ".KBBBBBBBBK.", ".KBBBWWBBBK.", ".KBBBWWBBBK.",
+        ".KBWWWWWWBK.", ".KBWWWWWWBK.", ".KBBBWWBBBK.", ".KBBBWWBBBK.",
+        ".KBBBBBBBBK.", "..KKKKKKKK..", "............", "............"
+      ]
+    },
+    {
+      "id": "b-sweep-camp", "name": "Home Comforts", "blurb": "Water, showers, and everywhere to sleep.",
+      "rule": { "type": "category", "id": "camp" },
+      "art": [
+        ".....KK.....", "....KGGK....", "...KGGGGK...", "..KGGGGGGK..",
+        "..KGGKKGGK..", ".KGGK..KGGK.", ".KGK....KGK.", "KGK......KGK",
+        "KKKKKKKKKKKK", "............", "............", "............"
+      ]
+    },
+    {
+      "id": "b-sweep-vendors", "name": "Patron of the Arts", "blurb": "Every bar and vendor found.",
+      "rule": { "type": "category", "id": "vendors" },
+      "art": [
+        "KKKKKKKKKKKK", ".KOOOOOOOOK.", "..KOOOOOOK..", "...KOOOOK...",
+        "....KOOK....", ".....KK.....", ".....KK.....", ".....KK.....",
+        "....KKKK....", "...KNNNNK...", "..KNNNNNNK..", "...KKKKKK..."
+      ]
+    },
+    {
+      "id": "b-night", "name": "Nocturnal", "blurb": "Found something between 2am and 5am.",
+      "rule": { "type": "night" },
+      "art": [
+        "....KKKK....", "..KKYYYYK...", ".KYYYYK.....", ".KYYYK......",
+        "KYYYK.......", "KYYYK....K..", "KYYYK...KWK.", ".KYYYK...K..",
+        ".KYYYYK.....", "..KKYYYYK...", "....KKKK....", "............"
+      ]
+    },
+    {
+      "id": "b-fast", "name": "On a Tear", "blurb": "Three finds inside an hour.",
+      "rule": { "type": "fast_three" },
+      "art": [
+        "......KK....", ".....KYYK...", "....KYYYK...", "...KYYYK....",
+        "..KYYYYYYK..", "...KYYYK....", "....KYYYK...", "...KYYYK....",
+        "..KYYK......", "...KK.......", "............", "............"
+      ]
+    },
+    {
+      "id": "b-share", "name": "Good Host", "blurb": "Shared something by QR.",
+      "rule": { "type": "shared" },
+      "art": [
+        "KKKK..KKKKKK", "KWWK..KWWWWK", "KWWK..KKKKKK", "KKKK........",
+        "......KKKK..", "..KKKKWWWWK.", "..KWWK.KKKK.", "..KWWK......",
+        "KKKK..KKKK..", "KWWK..KWWK..", "KWWK..KWWK..", "KKKK..KKKK.."
+      ]
+    },
+    {
+      "id": "b-stars", "name": "Planner", "blurb": "Ten sets starred.",
+      "rule": { "type": "stars", "n": 10 },
+      "art": [
+        ".....KK.....", ".....KK.....", "....KYYK....", "KKKKKYYKKKKK",
+        "KYYYYYYYYYYK", ".KYYYYYYYYK.", "..KYYYYYYK..", "...KYYYYK...",
+        "..KYYKKYYK..", ".KYYK..KYYK.", "..KK....KK..", "............"
+      ]
+    },
+    {
+      "id": "b-fixer", "name": "Fixer", "blurb": "Corrected the schedule when it moved.",
+      "rule": { "type": "correction" },
+      "art": [
+        "........KKK.", ".......KGGGK", "......KGGGK.", ".....KGGGK..",
+        "....KGGGK...", "...KGGGK....", "KK.KGGGK....", "KGKKGGK.....",
+        ".KGGGGK.....", "..KGGK......", "...KK.......", "............"
+      ]
+    },
+    {
+      "id": "b-compass", "name": "True North", "blurb": "Followed the compass to something.",
+      "rule": { "type": "compass" },
+      "art": [
+        "...KKKKKK...", "..KSSSSSSK..", ".KSSSKKSSSK.", ".KSSKRRKSSK.",
+        "KSSKRRRRKSSK", "KSSKRRRRKSSK", "KSSKWWWWKSSK", ".KSSKWWKSSK.",
+        ".KSSSKKSSSK.", "..KSSSSSSK..", "...KKKKKK...", "............"
+      ]
+    },
+    {
+      "id": "b-owl-taps", "name": "Who?", "blurb": "You poked the owl seven times. It noticed.",
+      "hidden": true,
+      "rule": { "type": "owl_taps", "n": 7 },
+      "art": [
+        "..K......K..", "..KK....KK..", ".KWWKKKKWWK.", "KWPPWWWWPPWK",
+        "KWPKWWWWKPWK", "KWWWWWWWWWWK", "KWWWKOOKWWWK", ".KWWWOOWWWK.",
+        "..KWWWWWWK..", "...KOKKOK...", "....K..K....", "............"
+      ]
+    },
+    {
+      "id": "b-sunrise", "name": "Sunrise Chaser", "blurb": "Starred a set that starts after 5am.",
+      "hidden": true,
+      "rule": { "type": "sunrise_star" },
+      "art": [
+        "............", "....KKKK....", "..KKYYYYKK..", ".KYYYYYYYYK.",
+        ".KYYYYYYYYK.", "KKKKKKKKKKKK", ".KOOOOOOOOK.", "..KOOOOOOK..",
+        "KKKKKKKKKKKK", "..KBBBBBBK..", ".KBBBBBBBBK.", "............"
+      ]
+    },
+    {
+      "id": "b-logo", "name": "Backstage Pass", "blurb": "You found the thing behind the logo.",
+      "hidden": true,
+      "rule": { "type": "logo_taps", "n": 5 },
+      "art": [
+        "..KKKKKKKK..", ".KPPPPPPPPK.", ".KPWWWWWWPK.", ".KPWKKKKWPK.",
+        ".KPWKYYKWPK.", ".KPWKYYKWPK.", ".KPWKKKKWPK.", ".KPWWWWWWPK.",
+        ".KPPPPPPPPK.", "..KPPPPPPK..", "...KKKKKK...", "............"
+      ]
+    }
+  ]
+}

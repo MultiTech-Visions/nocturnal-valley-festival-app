@@ -132,6 +132,7 @@ const QuestsUI = (() => {
       els.celebrateWhere.textContent = `Pinned to within ${Math.round(accuracy)} m. ${foundCount()} of ${data.quests.length} found.`;
       els.celebratePlace.hidden = false;
       render();
+      await score();
       if (onChange !== null) onChange();
     } catch (err) {
       // No fix is not a failed find: record it, say the coordinates are
@@ -142,6 +143,7 @@ const QuestsUI = (() => {
       pending = { quest, find, point: null };
       els.celebrateWhere.textContent = `Counted, but no GPS right now (${err.message}), so no pin was dropped.`;
       render();
+      await score();
       if (onChange !== null) onChange();
     }
   }
@@ -170,6 +172,8 @@ const QuestsUI = (() => {
     els.celebratePhotoName.textContent = 'Saved to this phone, on the pin.';
     els.celebrateShot.src = URL.createObjectURL(blob);
     els.celebrateShot.hidden = false;
+    await Badges.bump('photos');
+    await score();
     if (onChange !== null) onChange();
   }
 
@@ -201,6 +205,7 @@ const QuestsUI = (() => {
     els.placeWhat.textContent = `${placing.quest.name} pinned on the artwork — thank you, that one helps.`;
     setTimeout(stopPlacing, 1800);
     render();
+    await score();
     if (onChange !== null) onChange();
     return true;
   }
@@ -224,10 +229,25 @@ const QuestsUI = (() => {
 
   let onChange = null;
 
+  // One place that knows what a badge rule might want to look at.
+  async function score() {
+    const state = await Store.load();
+    await Badges.evaluate({
+      finds: [...finds.values()],
+      foundIds: new Set(finds.keys()),
+      quests: data.quests,
+      questTotal: data.quests.length,
+      favorites: state.favorites,
+      overrides: state.overrides,
+      events: ScheduleUI.events()
+    });
+  }
+
   async function refresh() {
     const state = await Store.load();
     finds = new Map(state.finds.map((f) => [f.questId, f]));
     render();
+    await score();
   }
 
   async function init(options) {
@@ -270,5 +290,5 @@ const QuestsUI = (() => {
     await refresh();
   }
 
-  return { init, refresh, onMapTap, foundCount, myFinds, applyFinds, calibrationPairs, placing: () => placing !== null };
+  return { init, refresh, score, onMapTap, foundCount, myFinds, applyFinds, calibrationPairs, placing: () => placing !== null };
 })();

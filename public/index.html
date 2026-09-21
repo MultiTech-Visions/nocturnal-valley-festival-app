@@ -51,7 +51,24 @@
       <p class="hint">Stand at the thing, press the button. Your phone's own fix is better than the guess the map shipped with — every find makes it sharper for everyone you share with.</p>
     </div>
     <ul id="hunt-list" class="quests"></ul>
+
+    <div class="badge-head">
+      <h3>Badge case</h3>
+      <p id="badge-count" class="pt-meta"></p>
+    </div>
+    <div id="badge-case" class="badge-case"></div>
+    <p id="badge-detail" class="hint"></p>
   </section>
+
+  <div id="badge-toast" class="badge-toast" hidden>
+    <canvas id="badge-toast-art" width="72" height="72"></canvas>
+    <div class="badge-toast-text">
+      <span class="unlocked">Badge unlocked</span>
+      <h3 id="badge-toast-name"></h3>
+      <p id="badge-toast-blurb"></p>
+    </div>
+    <button id="badge-toast-close" class="btn small" type="button">Nice</button>
+  </div>
 
   <div id="place-bar" class="merge-bar place-bar" hidden>
     <span id="place-what"></span>
@@ -273,6 +290,7 @@
   <script src="/public/store.js"></script>
   <script src="/public/share.js"></script>
   <script src="/public/compass.js"></script>
+  <script src="/public/badges.js"></script>
   <script src="/public/quests.js"></script>
   <script src="/public/schedule.js"></script>
   <script src="/public/points.js"></script>
