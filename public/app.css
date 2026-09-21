@@ -310,6 +310,25 @@ body:not(.view-schedule) #schedule { display: none; }
 .schedule .empty { color: var(--dim); font-size: 13px; align-self: start; }
 .pick-all { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
 
+/* Schedule edits */
+.ev.edited { border-left-style: dashed; }
+.ev.cancelled .ev-title { text-decoration: line-through; opacity: 0.65; }
+.ev-flag {
+  align-self: flex-start; padding: 0 5px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; background: var(--ember); color: var(--deep);
+}
+.ev.cancelled .ev-flag { background: #d1242f; color: #fff; }
+.chip.has-update { background: var(--ember); border-color: var(--ember); color: var(--deep); }
+.merge-bar {
+  display: flex; align-items: center; gap: 8px; justify-content: space-between;
+  padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  background: var(--ember); color: var(--deep);
+}
+.field.time { flex: 1; min-width: 0; }
+select.field { appearance: none; }
+#sched-sync-note { margin: 0; }
+.ev { cursor: pointer; }
+
 /* ---------- Sidebar ---------- */
 .sidebar {
   position: fixed; z-index: 800; top: 0; right: 0; bottom: 0; width: min(280px, 80vw);

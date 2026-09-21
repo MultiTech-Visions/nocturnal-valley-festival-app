@@ -436,8 +436,9 @@ const PointsUI = (() => {
     );
     const points = state.points.filter((p) => wanted.has(p.id));
     const favorites = els.shareSchedule.checked ? ScheduleUI.myFavorites() : [];
-    if (points.length === 0 && favorites.length === 0) {
-      status('Pick at least one point, or tick your schedule, to share.');
+    const edits = els.shareEdits.checked ? ScheduleUI.myOverrides() : [];
+    if (points.length === 0 && favorites.length === 0 && edits.length === 0) {
+      status('Pick at least one point, your schedule, or your corrections to share.');
       return;
     }
 
@@ -452,7 +453,7 @@ const PointsUI = (() => {
     }
 
     const name = els.shareName.value.trim() === '' ? 'Shared points' : els.shareName.value.trim();
-    const { frames } = await Share.encode(name, points, photos, favorites);
+    const { frames } = await Share.encode(name, points, photos, favorites, edits);
     show('qr-view');
     await goBright();
     stopPlaying = Share.play(els.qr, frames, (i, total) => {
@@ -511,6 +512,11 @@ const PointsUI = (() => {
       setlist
     );
     await reload();
+    // Corrections become this phone's own edits, so they survive a later
+    // sync the same way. Each one is still undoable on its own set.
+    if (payload.o.length > 0) {
+      await ScheduleUI.applyOverrides(payload.o.map(([eventId, patch]) => ({ eventId, patch, updatedAt: Date.now() })));
+    }
     await ScheduleUI.refresh();
     renderBundles();
     renderShareList();
@@ -518,7 +524,8 @@ const PointsUI = (() => {
     const parts = [];
     if (points.length > 0) parts.push(`${points.length} point${points.length === 1 ? '' : 's'}`);
     if (payload.f.length > 0) parts.push(`a ${payload.f.length}-set schedule`);
-    status(`Received ${parts.join(' and ')} from “${payload.n}”. Their picks show on the Schedule tab.`);
+    if (payload.o.length > 0) parts.push(`${payload.o.length} schedule correction${payload.o.length === 1 ? '' : 's'}`);
+    status(`Received ${parts.join(', ')} from “${payload.n}”.`);
   }
 
   function stopReceive() {
@@ -538,7 +545,7 @@ const PointsUI = (() => {
       'scrim', 'hint', 'drop', 'share', 'controls', 'confirm-bar', 'place-ok', 'place-cancel', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
       'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-edit', 'detail-delete', 'detail-close',
       'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'lightbox', 'lightbox-img',
-      'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
+      'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-edits', 'share-edits-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
       'qr', 'qr-count', 'qr-done', 'video', 'scan-canvas', 'scan-count', 'scan-cancel'
     ]) {
       els[id.replace(/-(\w)/g, (m, c) => c.toUpperCase())] = $(id);
@@ -559,6 +566,12 @@ const PointsUI = (() => {
         : `My schedule (${picks} set${picks === 1 ? '' : 's'})`;
       els.shareSchedule.disabled = picks === 0;
       els.shareSchedule.checked = picks > 0;
+      const fixes = ScheduleUI.editedCount();
+      els.shareEditsLabel.textContent = fixes === 0
+        ? 'Schedule corrections (none made)'
+        : `Schedule corrections (${fixes})`;
+      els.shareEdits.disabled = fixes === 0;
+      els.shareEdits.checked = fixes > 0;
       renderShareList();
       renderBundles();
       show('share-panel');

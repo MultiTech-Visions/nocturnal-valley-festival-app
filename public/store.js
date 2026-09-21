@@ -7,7 +7,7 @@
 // moves everyone's saved points to the right place instead of stranding them.
 const Store = (() => {
   const DB = 'nv-store';
-  const VERSION = 2;
+  const VERSION = 3;
   let dbPromise = null;
 
   function open() {
@@ -31,6 +31,11 @@ const Store = (() => {
         // alongside yours and dropped in one go.
         if (!db.objectStoreNames.contains('favorites')) db.createObjectStore('favorites', { keyPath: 'eventId' });
         if (!db.objectStoreNames.contains('setlists')) db.createObjectStore('setlists', { keyPath: 'id' });
+        // v3: edits to the published schedule, and the last schedule pulled
+        // from the cloud. An override is a patch over one event, never a
+        // copy of it, so a later sync still wins on everything untouched.
+        if (!db.objectStoreNames.contains('overrides')) db.createObjectStore('overrides', { keyPath: 'eventId' });
+        if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(new Error(`IndexedDB open failed: ${req.error.message}`));
@@ -67,10 +72,39 @@ const Store = (() => {
   // One transaction, one pass. Everything the map and the schedule need to
   // render comes back together rather than in four separate round trips.
   async function load() {
-    const out = await run(['points', 'bundles', 'favorites', 'setlists'], 'readonly',
-      (p, b, f, s) => [asList(p), asList(b), asList(f), asList(s)]);
-    const [points, bundles, favorites, setlists] = await Promise.all(out);
-    return { points, bundles, favorites: favorites.map((f) => f.eventId), setlists };
+    const out = await run(['points', 'bundles', 'favorites', 'setlists', 'overrides', 'meta'], 'readonly',
+      (p, b, f, s, o, m) => [asList(p), asList(b), asList(f), asList(s), asList(o), asOne(m, 'schedule')]);
+    const [points, bundles, favorites, setlists, overrides, schedule] = await Promise.all(out);
+    return {
+      points,
+      bundles,
+      favorites: favorites.map((f) => f.eventId),
+      setlists,
+      overrides,
+      // undefined until a cloud sync has ever happened on this phone.
+      cloud: schedule === undefined ? null : schedule
+    };
+  }
+
+  async function putOverride(override) {
+    await run(['overrides'], 'readwrite', (o) => o.put(override));
+    return override;
+  }
+
+  async function deleteOverride(eventId) {
+    await run(['overrides'], 'readwrite', (o) => o.delete(eventId));
+  }
+
+  async function putOverrides(list) {
+    await run(['overrides'], 'readwrite', (o) => {
+      for (const override of list) o.put(override);
+    });
+  }
+
+  // The last schedule pulled from the sheet, kept whole so the app opens on
+  // it offline instead of falling back to whatever shipped in the build.
+  async function putCloudSchedule(version, at, schedule) {
+    await run(['meta'], 'readwrite', (m) => m.put({ key: 'schedule', version, at, schedule }));
   }
 
   // Returns the state it left the event in, so a caller can repaint one star
@@ -138,5 +172,9 @@ const Store = (() => {
     return points.length;
   }
 
-  return { load, newId, putPoint, putPhoto, getPhoto, deletePoint, toggleFavorite, addBundle, deleteBundle };
+  return {
+    load, newId, putPoint, putPhoto, getPhoto, deletePoint, toggleFavorite,
+    putOverride, deleteOverride, putOverrides, putCloudSchedule,
+    addBundle, deleteBundle
+  };
 })();

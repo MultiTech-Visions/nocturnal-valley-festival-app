@@ -11,8 +11,13 @@ const ScheduleUI = (() => {
   const ROW_PX = 13;
 
   let data = null;
+  let bundled = null;
   let favorites = new Set();
   let setlists = [];
+  let overrides = new Map();
+  let cloud = null;
+  let editing = null;
+  let mergePick = null;
   let visibleTracks = new Set();
   let visibleFriends = new Set();
   let activeDay = null;
@@ -35,6 +40,44 @@ const ScheduleUI = (() => {
   }
 
   const trackById = (id) => data.tracks.find((t) => t.id === id);
+
+  // ---------- The override layer ----------
+  // Published schedule underneath, this phone's edits on top. Patches hold
+  // only the fields somebody actually changed, so a later sync still wins on
+  // everything they did not touch.
+  function effectiveEvents() {
+    const out = [];
+    for (const ev of data.events) {
+      const o = overrides.get(ev.id);
+      if (o === undefined) {
+        out.push(ev);
+        continue;
+      }
+      if (o.patch.status === 'merged') continue;
+      out.push({ ...ev, ...o.patch, edited: true });
+    }
+    // Sets added by hand, which have no published event underneath them.
+    for (const o of overrides.values()) {
+      if (o.patch.isNew === true && o.patch.status !== 'merged') {
+        out.push({ ...o.patch, id: o.eventId, edited: true });
+      }
+    }
+    return out;
+  }
+
+  const editedCount = () => overrides.size;
+
+  async function setOverride(eventId, patch) {
+    const existing = overrides.get(eventId);
+    const merged = { eventId, patch: { ...(existing === undefined ? {} : existing.patch), ...patch }, updatedAt: Date.now() };
+    overrides.set(eventId, merged);
+    await Store.putOverride(merged);
+  }
+
+  async function clearOverride(eventId) {
+    overrides.delete(eventId);
+    await Store.deleteOverride(eventId);
+  }
 
   // Who else is going, for the chips on a set.
   function friendsFor(eventId) {
@@ -114,13 +157,21 @@ const ScheduleUI = (() => {
 
   function eventCard(ev, track) {
     const card = document.createElement('div');
-    card.className = `ev${favorites.has(ev.id) ? ' mine' : ''}`;
+    card.className = `ev${favorites.has(ev.id) ? ' mine' : ''}${ev.edited === true ? ' edited' : ''}${ev.status === 'cancelled' ? ' cancelled' : ''}`;
+    // Tapping the body edits; the star keeps its own handler.
+    card.addEventListener('click', () => (mergePick === null ? openEditor(ev) : pickMerge(ev)));
     card.style.setProperty('--ev', track === undefined ? '#8a7bb8' : track.color);
 
     const title = document.createElement('span');
     title.className = 'ev-title';
     title.textContent = ev.title;
     card.append(title, starButton(ev));
+    if (ev.edited === true) {
+      const flag = document.createElement('span');
+      flag.className = 'ev-flag';
+      flag.textContent = ev.status === 'cancelled' ? 'cancelled' : 'changed';
+      card.appendChild(flag);
+    }
 
     if (ev.start !== null) {
       const when = document.createElement('span');
@@ -173,7 +224,8 @@ const ScheduleUI = (() => {
     const dayEnd = toMinutes(day.end);
     const rows = Math.ceil((dayEnd - dayStart) / SLOT_MIN);
 
-    const timed = data.events.filter((e) => e.day === day.id && e.start !== null && visibleTracks.has(e.track) && wanted(e));
+    const all = effectiveEvents();
+    const timed = all.filter((e) => e.day === day.id && e.start !== null && visibleTracks.has(e.track) && wanted(e));
 
     els.grid.style.gridTemplateColumns = `48px repeat(${shown.length}, minmax(120px, 1fr))`;
     els.grid.style.gridTemplateRows = `28px repeat(${rows}, ${ROW_PX}px)`;
@@ -230,7 +282,7 @@ const ScheduleUI = (() => {
 
     // Anything announced without a time. It is still worth starring, and it
     // moves into the grid by itself the moment a time is filled in.
-    const pending = data.events.filter((e) => e.start === null && wanted(e));
+    const pending = all.filter((e) => e.start === null && wanted(e));
     if (pending.length === 0) return;
     const h = document.createElement('h3');
     h.textContent = 'Announced — times to come';
@@ -249,10 +301,181 @@ const ScheduleUI = (() => {
     }
   }
 
+  // ---------- Editing ----------
+  // One sheet does every kind of change, because a phone in a field is the
+  // worst place to hunt through nested menus: retime, restage, rename,
+  // merge into a b2b, cancel, or add something that was never published.
+  function openEditor(ev) {
+    editing = ev;
+    els.edTitle.value = ev.title;
+    els.edNote.value = ev.note === undefined ? '' : ev.note;
+    els.edStart.value = ev.start === null ? '' : ev.start;
+    els.edEnd.value = ev.end === null ? '' : ev.end;
+
+    els.edDay.innerHTML = '<option value="">Day TBA</option>';
+    for (const d of data.days) {
+      const o = document.createElement('option');
+      o.value = d.id;
+      o.textContent = d.label;
+      o.selected = d.id === ev.day;
+      els.edDay.appendChild(o);
+    }
+    els.edTrack.innerHTML = '<option value="">Stage TBA</option>';
+    for (const t of data.tracks) {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.name;
+      o.selected = t.id === ev.track;
+      els.edTrack.appendChild(o);
+    }
+
+    els.edReset.hidden = !overrides.has(ev.id);
+    els.edCancel.textContent = ev.status === 'cancelled' ? 'Un-cancel' : 'Mark cancelled';
+    els.edHint.textContent = '';
+    els.editor.hidden = false;
+  }
+
+  function closeEditor() {
+    els.editor.hidden = true;
+    editing = null;
+  }
+
+  // Times are typed, not fiddled with in a date picker: "21:30" is four
+  // keystrokes, and "25:30" says half one after a midnight that belongs to
+  // the night before.
+  function validTime(v) {
+    if (v === '') return true;
+    if (!/^\d{1,2}:\d{2}$/.test(v)) return false;
+    const [h, m] = v.split(':').map(Number);
+    return h >= 0 && h <= 30 && m >= 0 && m < 60;
+  }
+
+  async function saveEditor() {
+    const start = els.edStart.value.trim();
+    const end = els.edEnd.value.trim();
+    if (!validTime(start) || !validTime(end)) {
+      els.edHint.textContent = 'Times look like 21:30. Past midnight counts on: 25:30 is 1:30am.';
+      return;
+    }
+    if ((start === '') !== (end === '')) {
+      els.edHint.textContent = 'Give both a start and an end, or neither.';
+      return;
+    }
+    const patch = {
+      title: els.edTitle.value.trim(),
+      note: els.edNote.value.trim(),
+      day: els.edDay.value === '' ? null : els.edDay.value,
+      track: els.edTrack.value === '' ? null : els.edTrack.value,
+      start: start === '' ? null : start,
+      end: end === '' ? null : end
+    };
+    if (editing.isNew === true) patch.isNew = true;
+    await setOverride(editing.id, patch);
+    closeEditor();
+    render();
+  }
+
+  async function toggleCancelled() {
+    await setOverride(editing.id, { status: editing.status === 'cancelled' ? 'on' : 'cancelled' });
+    closeEditor();
+    render();
+  }
+
+  async function resetEvent() {
+    await clearOverride(editing.id);
+    closeEditor();
+    render();
+  }
+
+  async function addEvent() {
+    const day = data.days.find((d) => d.id === activeDay);
+    const id = `local-${Store.newId()}`;
+    const patch = { isNew: true, title: 'New set', note: '', day: day.id, track: [...visibleTracks][0], start: null, end: null };
+    await setOverride(id, patch);
+    render();
+    openEditor({ ...patch, id, edited: true });
+  }
+
+  // Merge is two taps: press Merge, then tap the other set. The one tapped
+  // folds into this one and stops taking up a column.
+  function startMerge() {
+    mergePick = editing;
+    closeEditor();
+    els.mergeBar.hidden = false;
+    els.mergeWhat.textContent = `Tap the set to merge into “${mergePick.title}”`;
+  }
+
+  function stopMerge() {
+    mergePick = null;
+    els.mergeBar.hidden = true;
+  }
+
+  async function pickMerge(other) {
+    if (other.id === mergePick.id) {
+      stopMerge();
+      return;
+    }
+    const a = mergePick;
+    const spanStart = a.start !== null && other.start !== null ? (toMinutes(a.start) <= toMinutes(other.start) ? a.start : other.start) : a.start;
+    const spanEnd = a.end !== null && other.end !== null ? (toMinutes(a.end) >= toMinutes(other.end) ? a.end : other.end) : a.end;
+    await setOverride(a.id, { title: `${a.title} b2b ${other.title}`, start: spanStart, end: spanEnd });
+    await setOverride(other.id, { status: 'merged' });
+    stopMerge();
+    render();
+  }
+
+  // ---------- Cloud sync ----------
+  // Most phones here have no signal, so this is a button and never a
+  // background poll. The check pulls a version string only.
+  async function checkCloud(quiet) {
+    try {
+      const res = await fetch('/api/schedule?check=1', { cache: 'no-store' });
+      if (res.status === 503) {
+        if (!quiet) els.syncNote.textContent = 'No schedule sheet is set up for this festival yet.';
+        return;
+      }
+      if (!res.ok) throw new Error(`server said ${res.status}`);
+      const info = await res.json();
+      const known = cloud === null ? null : cloud.version;
+      els.sync.classList.toggle('has-update', info.version !== known);
+      els.syncNote.textContent = info.version === known
+        ? 'Up to date with the published schedule.'
+        : 'A newer schedule is published. Tap Sync to pull it.';
+    } catch (err) {
+      if (!quiet) els.syncNote.textContent = `Can't reach the schedule right now (${err.message}). Your copy still works.`;
+    }
+  }
+
+  async function syncNow() {
+    els.syncNote.textContent = 'Syncing…';
+    try {
+      const res = await fetch('/api/schedule', { cache: 'no-store' });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error);
+      }
+      const info = await res.json();
+      await Store.putCloudSchedule(info.version, info.at, info.schedule);
+      cloud = { version: info.version, at: info.at, schedule: info.schedule };
+      data = info.schedule;
+      els.sync.classList.remove('has-update');
+      // Edits survive a sync by design: they sit on top, keyed by event id.
+      els.syncNote.textContent = `Synced. ${data.events.length} sets${editedCount() > 0 ? `, your ${editedCount()} change${editedCount() === 1 ? '' : 's'} kept on top` : ''}.`;
+      render();
+    } catch (err) {
+      els.syncNote.textContent = `Sync failed: ${err.message}`;
+    }
+  }
+
   async function refresh() {
     const state = await Store.load();
     favorites = new Set(state.favorites);
     setlists = state.setlists;
+    overrides = new Map(state.overrides.map((o) => [o.eventId, o]));
+    cloud = state.cloud;
+    // A schedule pulled from the sheet outranks the one that shipped in the
+    // build; without one, the build's copy is what there is.
+    data = cloud === null ? bundled : cloud.schedule;
     render();
   }
 
@@ -264,12 +487,18 @@ const ScheduleUI = (() => {
   };
 
   async function init() {
-    for (const id of ['sched-days', 'sched-tracks', 'sched-friends', 'sched-friends-row', 'sched-grid', 'sched-tba', 'sched-mine']) {
+    for (const id of [
+      'sched-days', 'sched-tracks', 'sched-friends', 'sched-friends-row', 'sched-grid', 'sched-tba',
+      'sched-mine', 'sched-add', 'sched-sync', 'sched-sync-note', 'sched-editor', 'sched-merge-bar', 'sched-merge-what', 'sched-merge-stop',
+      'sched-ed-title', 'sched-ed-note', 'sched-ed-day', 'sched-ed-track', 'sched-ed-start', 'sched-ed-end',
+      'sched-ed-save', 'sched-ed-close', 'sched-ed-cancel', 'sched-ed-reset', 'sched-ed-merge', 'sched-ed-hint'
+    ]) {
       els[id.replace('sched-', '').replace(/-(\w)/g, (m, c) => c.toUpperCase())] = $(id);
     }
     const res = await fetch('/public/schedule.json');
     if (!res.ok) throw new Error(`schedule.json returned ${res.status}`);
-    data = await res.json();
+    bundled = await res.json();
+    data = bundled;
 
     activeDay = data.days[0].id;
     // Stages on by default, activity tracks off: the grid should open on
@@ -282,9 +511,27 @@ const ScheduleUI = (() => {
       onlyMine = !onlyMine;
       render();
     });
+    els.add.addEventListener('click', addEvent);
+    els.sync.addEventListener('click', syncNow);
+    els.edSave.addEventListener('click', saveEditor);
+    els.edClose.addEventListener('click', closeEditor);
+    els.edCancel.addEventListener('click', toggleCancelled);
+    els.edReset.addEventListener('click', resetEvent);
+    els.edMerge.addEventListener('click', startMerge);
+    els.mergeStop.addEventListener('click', stopMerge);
 
     await refresh();
+    // Quiet: a phone with no signal should not open on an error.
+    checkCloud(true);
   }
 
-  return { init, refresh, myFavorites, eventTitle };
+  // Shared over QR alongside points and favourites.
+  const myOverrides = () => [...overrides.values()];
+  async function applyOverrides(list) {
+    await Store.putOverrides(list);
+    for (const o of list) overrides.set(o.eventId, o);
+    render();
+  }
+
+  return { init, refresh, myFavorites, myOverrides, applyOverrides, editedCount, eventTitle, checkCloud };
 })();

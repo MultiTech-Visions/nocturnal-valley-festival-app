@@ -34,7 +34,16 @@
         <span class="chips-label">Friends</span>
         <div id="sched-friends" class="chips"></div>
       </div>
-      <button id="sched-mine" class="chip mine" type="button">☆ My schedule</button>
+      <div class="chips">
+        <button id="sched-mine" class="chip mine" type="button">☆ My schedule</button>
+        <button id="sched-add" class="chip" type="button">+ Add a set</button>
+        <button id="sched-sync" class="chip" type="button">⟳ Sync</button>
+      </div>
+      <p id="sched-sync-note" class="hint"></p>
+      <div id="sched-merge-bar" class="merge-bar" hidden>
+        <span id="sched-merge-what"></span>
+        <button id="sched-merge-stop" class="btn small" type="button">Cancel</button>
+      </div>
     </div>
     <div class="grid-scroll"><div id="sched-grid" class="grid"></div></div>
     <div id="sched-tba" class="tba"></div>
@@ -127,6 +136,28 @@
     </div>
   </section>
 
+  <section id="sched-editor" class="sheet" hidden>
+    <h2>Change this set</h2>
+    <input id="sched-ed-title" class="field" type="text" placeholder="Act" autocomplete="off">
+    <div class="cal-row">
+      <select id="sched-ed-day" class="field"></select>
+      <select id="sched-ed-track" class="field"></select>
+    </div>
+    <div class="cal-row">
+      <input id="sched-ed-start" class="field time" type="text" inputmode="numeric" placeholder="Start 21:30" autocomplete="off">
+      <input id="sched-ed-end" class="field time" type="text" inputmode="numeric" placeholder="End 23:00" autocomplete="off">
+    </div>
+    <input id="sched-ed-note" class="field" type="text" placeholder="Note (optional)" autocomplete="off">
+    <p id="sched-ed-hint" class="hint"></p>
+    <div class="cal-row">
+      <button id="sched-ed-save" class="btn primary" type="button">Save</button>
+      <button id="sched-ed-merge" class="btn small" type="button">Merge b2b…</button>
+      <button id="sched-ed-cancel" class="btn small" type="button">Mark cancelled</button>
+      <button id="sched-ed-reset" class="btn small" type="button">Undo my changes</button>
+      <button id="sched-ed-close" class="btn small" type="button">Close</button>
+    </div>
+  </section>
+
   <div id="lightbox" class="lightbox" hidden>
     <img id="lightbox-img" alt="">
   </div>
@@ -135,6 +166,7 @@
     <h2>Share points</h2>
     <input id="share-name" class="field" type="text" placeholder="Your name or camp (optional)" autocomplete="off">
     <label class="pick-all"><input id="share-schedule" type="checkbox" checked> <span id="share-schedule-label">My schedule</span></label>
+    <label class="pick-all"><input id="share-edits" type="checkbox" checked> <span id="share-edits-label">Schedule corrections</span></label>
     <ul id="share-list" class="points pick"></ul>
     <div class="cal-row">
       <button id="share-go" class="btn primary" type="button">Show QR</button>
