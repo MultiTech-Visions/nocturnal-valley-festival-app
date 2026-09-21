@@ -1,0 +1,148 @@
+// On a phone there's no console, so uncaught errors are shown on screen.
+function showFatal(msg) {
+  const el = document.getElementById('fatal');
+  el.textContent = msg;
+  el.hidden = false;
+}
+window.addEventListener('error', (e) => showFatal(`Error: ${e.message}`));
+window.addEventListener('unhandledrejection', (e) => showFatal(`Error: ${e.reason && e.reason.message ? e.reason.message : e.reason}`));
+
+const els = {
+  offline: document.getElementById('offline'),
+  gpsStatus: document.getElementById('gps-status'),
+  gpsToggle: document.getElementById('gps-toggle'),
+  recenter: document.getElementById('recenter'),
+  map: document.getElementById('map')
+};
+
+// ---------- Offline readiness ----------
+async function checkOffline() {
+  const reg = await navigator.serviceWorker.ready;
+  const status = await new Promise((resolve) => {
+    const ch = new MessageChannel();
+    ch.port1.onmessage = (e) => resolve(e.data);
+    reg.active.postMessage('status', [ch.port2]);
+  });
+  els.offline.textContent = status.ready ? 'Ready offline' : 'Saving for offline…';
+  els.offline.className = `badge ${status.ready ? 'ready' : 'pending'}`;
+  if (!status.ready) setTimeout(checkOffline, 1500);
+}
+
+if (!('serviceWorker' in navigator)) throw new Error('This browser does not support offline mode.');
+navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(checkOffline);
+
+// ---------- Map + GPS ----------
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Map image failed to load: ${src}`));
+    img.src = src;
+    img.draggable = false;
+  });
+}
+
+async function init() {
+  const res = await fetch('/public/calibration.json');
+  if (!res.ok) throw new Error(`calibration.json returned ${res.status}`);
+  const calib = await res.json();
+  const img = await loadImage(calib.image.src);
+
+  if (img.naturalWidth !== calib.image.width || img.naturalHeight !== calib.image.height) {
+    throw new Error(`Map is ${img.naturalWidth}×${img.naturalHeight} but calibration expects ${calib.image.width}×${calib.image.height}. Recalibrate.`);
+  }
+
+  const viewer = new Viewer(els.map, img, { maxZoom: 6 });
+
+  if (calib.points.length < 3) {
+    els.gpsStatus.textContent = 'Map not calibrated yet';
+    els.gpsToggle.disabled = true;
+    return;
+  }
+  const geo = Geo.build(calib);
+
+  const dot = document.createElement('div');
+  dot.className = 'me';
+  const ring = document.createElement('div');
+  ring.className = 'me-accuracy';
+
+  let watchId = null;
+  let wanted = false;
+  let last = null;
+  let centeredOnce = false;
+
+  function onFix(pos) {
+    const { latitude, longitude, accuracy } = pos.coords;
+    const p = geo.project(latitude, longitude);
+    const offImage = p.x < 0 || p.y < 0 || p.x > calib.image.width || p.y > calib.image.height;
+    const x = Math.min(Math.max(p.x, 0), calib.image.width);
+    const y = Math.min(Math.max(p.y, 0), calib.image.height);
+
+    dot.classList.toggle('rough', !p.inMesh);
+    dot.classList.toggle('edge', offImage);
+    viewer.setMarker('ring', { x, y, el: ring, radiusPx: offImage ? 0 : accuracy * geo.pxPerMeter(latitude, longitude) });
+    viewer.setMarker('me', { x, y, el: dot });
+
+    last = { x, y };
+    els.recenter.disabled = false;
+    els.gpsStatus.textContent = offImage
+      ? 'You’re off the map'
+      : `Within ${Math.round(accuracy)} m${p.inMesh ? '' : ' · rough area'}`;
+
+    if (!centeredOnce) {
+      viewer.centerOn(x, y, 2.5);
+      centeredOnce = true;
+    }
+  }
+
+  function onError(err) {
+    const reasons = {
+      1: 'Location permission denied. Allow it in your phone settings.',
+      2: 'No GPS signal yet. Step out from under the trees.',
+      3: 'Still searching for satellites…'
+    };
+    els.gpsStatus.textContent = reasons[err.code];
+  }
+
+  function start() {
+    if (watchId !== null) return;
+    els.gpsStatus.textContent = 'Finding satellites…';
+    watchId = navigator.geolocation.watchPosition(onFix, onError, {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 60000
+    });
+  }
+
+  function stop() {
+    if (watchId === null) return;
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+
+  els.gpsToggle.addEventListener('click', () => {
+    wanted = !wanted;
+    els.gpsToggle.textContent = wanted ? 'Hide my location' : 'Show my location';
+    if (wanted) {
+      centeredOnce = false;
+      start();
+    } else {
+      stop();
+      viewer.removeMarker('me');
+      viewer.removeMarker('ring');
+      els.gpsStatus.textContent = 'GPS off';
+      els.recenter.disabled = true;
+    }
+  });
+
+  els.recenter.addEventListener('click', () => viewer.centerOn(last.x, last.y, 2.5));
+
+  // GPS only runs while the app is on screen, to save battery.
+  document.addEventListener('visibilitychange', () => {
+    if (!wanted) return;
+    if (document.hidden) stop();
+    else start();
+  });
+}
+
+init();

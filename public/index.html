@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1b0d33">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NV Map">
+  <link rel="apple-touch-icon" href="/public/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/public/app.css">
+  <title>Nocturnal Valley Map</title>
+</head>
+<body class="app">
+  <header class="bar">
+    <span id="offline" class="badge pending">Saving for offline…</span>
+    <span id="gps-status" class="gps-status">GPS off</span>
+  </header>
+
+  <main id="map" class="viewer"></main>
+
+  <nav class="controls">
+    <button id="gps-toggle" class="btn primary" type="button">Show my location</button>
+    <button id="recenter" class="btn" type="button" disabled>Center on me</button>
+  </nav>
+
+  <div id="fatal" class="fatal" hidden></div>
+
+  <script src="/public/geo.js"></script>
+  <script src="/public/viewer.js"></script>
+  <script src="/public/app.js"></script>
+</body>
+</html>

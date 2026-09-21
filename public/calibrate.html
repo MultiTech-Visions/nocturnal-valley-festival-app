@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="/public/app.css">
+  <title>Calibrate map</title>
+</head>
+<body class="cal">
+  <section class="cal-panes">
+    <div class="cal-pane">
+      <div class="cal-label">Festival map: tap a landmark</div>
+      <div id="img-view" class="viewer"></div>
+    </div>
+    <div class="cal-pane">
+      <div class="cal-label">Satellite: tap the same spot</div>
+      <div id="sat-view"></div>
+    </div>
+  </section>
+
+  <section class="cal-side">
+    <div class="cal-row">
+      <label class="mode"><input type="radio" name="mode" value="pair" checked> Add points</label>
+      <label class="mode"><input type="radio" name="mode" value="test"> Test: tap satellite, see dot</label>
+    </div>
+
+    <div class="cal-row">
+      <input id="label" class="field" type="text" placeholder="Name this point (e.g. Pond)">
+      <button id="add" class="btn primary" type="button" disabled>Add point</button>
+    </div>
+    <div id="pending" class="hint">Tap the festival map, then the satellite.</div>
+
+    <ol id="list" class="points"></ol>
+
+    <div class="cal-row">
+      <button id="copy" class="btn" type="button">Copy calibration.json</button>
+      <button id="reset" class="btn" type="button">Discard draft</button>
+    </div>
+    <div id="source" class="hint"></div>
+    <textarea id="out" class="out" readonly></textarea>
+  </section>
+
+  <div id="fatal" class="fatal" hidden></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="/public/geo.js"></script>
+  <script src="/public/viewer.js"></script>
+  <script src="/public/calibrate.js"></script>
+</body>
+</html>
