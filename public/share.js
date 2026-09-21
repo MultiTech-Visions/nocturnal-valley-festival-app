@@ -77,7 +77,7 @@ const Share = (() => {
   // ---------- Payload ----------
   // Positional arrays, not objects: at QR scale, repeating a key like "label"
   // forty times costs real frames.
-  async function encode(name, points, photos) {
+  async function encode(name, points, photos, favorites) {
     const index = new Map();
     const images = [];
     for (const [pointId, blob] of photos) {
@@ -85,10 +85,14 @@ const Share = (() => {
       images.push(await blobToBase64(blob));
     }
     const payload = {
-      v: 1,
+      v: 2,
       n: name,
       p: points.map((pt) => [pt.label, +pt.lat.toFixed(6), +pt.lng.toFixed(6), pt.note, index.has(pt.id) ? index.get(pt.id) : -1]),
-      i: images
+      i: images,
+      // Event ids only. Both phones read the same schedule.json, so sending
+      // titles and times as well would just be frames spent on data the
+      // other side already has.
+      f: favorites
     };
 
     const raw = enc.encode(JSON.stringify(payload));
@@ -124,7 +128,12 @@ const Share = (() => {
     const body = base64ToBytes(chunks.join(''));
     const raw = flag === 'c' ? await pipe(body, new DecompressionStream('deflate-raw')) : body;
     const payload = JSON.parse(dec.decode(raw));
-    if (payload.v !== 1) throw new Error(`This code is version ${payload.v}; this app speaks version 1. Update both phones.`);
+    if (payload.v !== 1 && payload.v !== 2) {
+      throw new Error(`This code is version ${payload.v}; this app speaks 1 and 2. Update both phones.`);
+    }
+    // v1 predates shared setlists. Fill the field per version rather than
+    // defaulting it away, so a malformed v2 still fails loudly.
+    if (payload.v === 1) payload.f = [];
     return payload;
   }
 

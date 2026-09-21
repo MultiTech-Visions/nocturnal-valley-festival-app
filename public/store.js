@@ -7,21 +7,30 @@
 // moves everyone's saved points to the right place instead of stranding them.
 const Store = (() => {
   const DB = 'nv-store';
-  const VERSION = 1;
+  const VERSION = 2;
   let dbPromise = null;
 
   function open() {
     if (dbPromise !== null) return dbPromise;
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB, VERSION);
+      // Guarded per store, not per version: a phone upgrading from 1 and a
+      // phone installing fresh both run this, and only the missing stores
+      // should be created.
       req.onupgradeneeded = () => {
         const db = req.result;
-        const points = db.createObjectStore('points', { keyPath: 'id' });
-        // Received points carry the id of the bundle they arrived in, so a
-        // whole share can be listed and dropped as one unit.
-        points.createIndex('bundleId', 'bundleId');
-        db.createObjectStore('photos', { keyPath: 'id' });
-        db.createObjectStore('bundles', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('points')) {
+          // Received points carry the id of the bundle they arrived in, so a
+          // whole share can be listed and dropped as one unit.
+          db.createObjectStore('points', { keyPath: 'id' }).createIndex('bundleId', 'bundleId');
+        }
+        if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('bundles')) db.createObjectStore('bundles', { keyPath: 'id' });
+        // v2: the schedule. favorites are this phone's own picks; setlists
+        // are other people's, kept whole so a friend's plan can be shown
+        // alongside yours and dropped in one go.
+        if (!db.objectStoreNames.contains('favorites')) db.createObjectStore('favorites', { keyPath: 'eventId' });
+        if (!db.objectStoreNames.contains('setlists')) db.createObjectStore('setlists', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(new Error(`IndexedDB open failed: ${req.error.message}`));
@@ -55,11 +64,20 @@ const Store = (() => {
     });
   }
 
-  // One transaction, one pass: the sharing screen needs points, bundles and
-  // nothing else, and asking three times is three times the work.
+  // One transaction, one pass. Everything the map and the schedule need to
+  // render comes back together rather than in four separate round trips.
   async function load() {
-    const [points, bundles] = await run(['points', 'bundles'], 'readonly', (p, b) => [asList(p), asList(b)]);
-    return { points: await points, bundles: await bundles };
+    const out = await run(['points', 'bundles', 'favorites', 'setlists'], 'readonly',
+      (p, b, f, s) => [asList(p), asList(b), asList(f), asList(s)]);
+    const [points, bundles, favorites, setlists] = await Promise.all(out);
+    return { points, bundles, favorites: favorites.map((f) => f.eventId), setlists };
+  }
+
+  // Returns the state it left the event in, so a caller can repaint one star
+  // without reloading the whole store.
+  async function toggleFavorite(eventId, on) {
+    await run(['favorites'], 'readwrite', (f) => (on ? f.put({ eventId }) : f.delete(eventId)));
+    return on;
   }
 
   const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -90,11 +108,14 @@ const Store = (() => {
 
   // A received share lands as one write: its bundle row, its points and its
   // photos together, so a half-imported bundle can't survive a dropped tab.
-  async function addBundle(bundle, points, photos) {
-    await run(['points', 'photos', 'bundles'], 'readwrite', (p, ph, b) => {
+  async function addBundle(bundle, points, photos, setlist) {
+    await run(['points', 'photos', 'bundles', 'setlists'], 'readwrite', (p, ph, b, s) => {
       b.put(bundle);
       for (const point of points) p.put(point);
       for (const photo of photos) ph.put(photo);
+      // A share can carry points, a setlist, or both; the bundle row is what
+      // ties them together so one "delete all" removes the lot.
+      if (setlist !== null) s.put(setlist);
     });
   }
 
@@ -106,15 +127,16 @@ const Store = (() => {
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(new Error(`IndexedDB read failed: ${req.error.message}`));
     });
-    await run(['points', 'photos', 'bundles'], 'readwrite', (p, ph, b) => {
+    await run(['points', 'photos', 'bundles', 'setlists'], 'readwrite', (p, ph, b, s) => {
       for (const point of points) {
         p.delete(point.id);
         if (point.photoId !== null) ph.delete(point.photoId);
       }
+      s.delete(id);
       b.delete(id);
     });
     return points.length;
   }
 
-  return { load, newId, putPoint, putPhoto, getPhoto, deletePoint, addBundle, deleteBundle };
+  return { load, newId, putPoint, putPhoto, getPhoto, deletePoint, toggleFavorite, addBundle, deleteBundle };
 })();

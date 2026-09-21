@@ -1,0 +1,47 @@
+{
+  "_readme": "Set times were not published when this was built, so events[] carries what was announced with start/end null. Fill in start/end as 'HH:MM' (24h, the day it belongs to) and the grid renders it automatically. An event whose start is null is listed under its stage as 'time to be announced'. Times after midnight belong to the day the night started: use '25:30' for 1:30am.",
+  "festival": { "name": "Nocturnal Valley", "venue": "Astral Valley Art Park, French Village, MO" },
+
+  "days": [
+    { "id": "wed", "label": "Wed", "date": "2026-09-23", "note": "Pre-party", "start": "09:00", "end": "21:00" },
+    { "id": "thu", "label": "Thu", "date": "2026-09-24", "start": "08:00", "end": "22:00" },
+    { "id": "fri", "label": "Fri", "date": "2026-09-25", "start": "08:00", "end": "22:00" },
+    { "id": "sat", "label": "Sat", "date": "2026-09-26", "start": "10:00", "end": "18:00" }
+  ],
+
+  "tracks": [
+    { "id": "astral",    "name": "Astral",    "kind": "stage",    "sound": "Funktion-One",   "color": "#f6d31b" },
+    { "id": "nocturnal", "name": "Nocturnal", "kind": "stage",    "sound": "Hennessy",       "color": "#f08a24" },
+    { "id": "forest",    "name": "Forest",    "kind": "stage",    "sound": "Void Acoustics", "color": "#35a7ff" },
+    { "id": "renegade",  "name": "Renegade",  "kind": "stage",    "sound": "",               "color": "#b06bff" },
+    { "id": "workshops", "name": "Workshops", "kind": "activity", "sound": "",               "color": "#4ad6a0" },
+    { "id": "art",       "name": "Art",       "kind": "activity", "sound": "",               "color": "#ff7aa8" },
+    { "id": "wellness",  "name": "Wellness",  "kind": "activity", "sound": "",               "color": "#9ad14b" }
+  ],
+
+  "events": [
+    { "id": "a-gjones",     "title": "G Jones",                          "track": "astral",    "day": null, "start": null, "end": null },
+    { "id": "a-supertask",  "title": "Supertask",                        "track": "astral",    "day": null, "start": null, "end": null, "note": "2-hour reverse journey set" },
+    { "id": "a-menertkarns","title": "Michael Menert & Chris Karns",     "track": "astral",    "day": null, "start": null, "end": null, "note": "of Pretty Lights" },
+    { "id": "n-skream",     "title": "Skream",                           "track": "nocturnal", "day": null, "start": null, "end": null },
+    { "id": "n-troyboi",    "title": "TroyBoi",                          "track": "nocturnal", "day": null, "start": null, "end": null },
+    { "id": "n-hamdi",      "title": "Hamdi",                            "track": "nocturnal", "day": null, "start": null, "end": null },
+    { "id": "n-peekaboo",   "title": "PEEKABOO b2b LYNY",                "track": "nocturnal", "day": null, "start": null, "end": null, "note": "back to back" },
+
+    { "id": "u-dailybread", "title": "Daily Bread",        "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-emancipator","title": "Emancipator",        "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-sts9",       "title": "STS9",               "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-biscuits",   "title": "The Disco Biscuits", "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-blaap",      "title": "BLAAP",              "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-caspa",      "title": "Caspa",              "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-ott",        "title": "Ott.",               "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-jadecicada", "title": "Jade Cicada",        "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-detoxunit",  "title": "Detox Unit",         "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-mickman",    "title": "Mickman",            "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-maddyoneal", "title": "Maddy O'Neal",       "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-thoughtproc","title": "Thought Process",    "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-koansound",  "title": "Koan Sound",         "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-ahundred",   "title": "A Hundred Drums",    "track": null, "day": null, "start": null, "end": null },
+    { "id": "u-zenselekta", "title": "Zen Selekta",        "track": null, "day": null, "start": null, "end": null }
+  ]
+}

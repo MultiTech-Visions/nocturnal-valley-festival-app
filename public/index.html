@@ -19,7 +19,26 @@
     <span id="gps-status" class="gps-status">GPS off</span>
   </header>
 
+  <nav class="tabs">
+    <button id="tab-map" class="tab on" type="button">Map</button>
+    <button id="tab-schedule" class="tab" type="button">Schedule</button>
+  </nav>
+
   <main id="map" class="viewer"></main>
+
+  <section id="schedule" class="schedule">
+    <div class="sched-bar">
+      <div id="sched-days" class="chips"></div>
+      <div id="sched-tracks" class="chips"></div>
+      <div id="sched-friends-row" class="chips-row" hidden>
+        <span class="chips-label">Friends</span>
+        <div id="sched-friends" class="chips"></div>
+      </div>
+      <button id="sched-mine" class="chip mine" type="button">☆ My schedule</button>
+    </div>
+    <div class="grid-scroll"><div id="sched-grid" class="grid"></div></div>
+    <div id="sched-tba" class="tba"></div>
+  </section>
 
   <aside id="sidebar" class="sidebar" aria-label="Saved points">
     <div class="sidebar-head">
@@ -114,7 +133,8 @@
 
   <section id="share-panel" class="sheet" hidden>
     <h2>Share points</h2>
-    <input id="share-name" class="field" type="text" placeholder="Name this set (optional)" autocomplete="off">
+    <input id="share-name" class="field" type="text" placeholder="Your name or camp (optional)" autocomplete="off">
+    <label class="pick-all"><input id="share-schedule" type="checkbox" checked> <span id="share-schedule-label">My schedule</span></label>
     <ul id="share-list" class="points pick"></ul>
     <div class="cal-row">
       <button id="share-go" class="btn primary" type="button">Show QR</button>
@@ -146,6 +166,7 @@
   <script src="/public/viewer.js"></script>
   <script src="/public/store.js"></script>
   <script src="/public/share.js"></script>
+  <script src="/public/schedule.js"></script>
   <script src="/public/points.js"></script>
   <script src="/public/app.js"></script>
 </body>
