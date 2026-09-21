@@ -12,6 +12,7 @@ const Geo = (() => {
     const k = Math.cos(lat0 * RAD);
     return {
       toMeters: (lat, lng) => [(lng - lng0) * RAD * R * k, (lat - lat0) * RAD * R],
+      toLatLng: ([x, y]) => [lat0 + y / (R * RAD), lng0 + x / (R * k * RAD)],
       metersEastToLng: (m) => m / (R * k * RAD)
     };
   }
@@ -43,7 +44,15 @@ const Geo = (() => {
     const [a, b, c] = solve3(M, bu);
     const [d, e, f] = solve3(M, bv);
     const fn = ([x, y]) => [a * x + b * y + c, d * x + e * y + f];
-    fn.scale = Math.sqrt(Math.abs(a * e - b * d)); // image px per meter
+    const det = a * e - b * d;
+    if (Math.abs(det) < 1e-12) throw new Error('Degenerate affine fit; control points give no usable transform.');
+    fn.scale = Math.sqrt(Math.abs(det)); // image px per meter
+    // The same map read backwards: pixels to meters. Dropping a pin by
+    // tapping the artwork needs this direction.
+    fn.invert = ([u, v]) => [
+      (e * (u - c) - b * (v - f)) / det,
+      (a * (v - f) - d * (u - c)) / det
+    ];
     return fn;
   }
 
@@ -121,6 +130,9 @@ const Geo = (() => {
     const global = fitAffine(src, dst);
     const mesh = delaunay(src).map((t) => ({
       verts: t.map((i) => src[i]),
+      // The same triangle in pixel space, so a tapped pixel can be matched
+      // to the triangle whose transform should undo it.
+      pxVerts: t.map((i) => dst[i]),
       fn: fitAffine(t.map((i) => src[i]), t.map((i) => dst[i]))
     }));
 
@@ -134,6 +146,20 @@ const Geo = (() => {
       }
       const [x, y] = global(m);
       return { x, y, inMesh: false };
+    }
+
+    // Pixels back to GPS, mirroring project(): the triangle that contains the
+    // pixel undoes it exactly, anything outside the mesh falls back to the
+    // global fit. inMesh carries the same warning as it does on the way out.
+    function unproject(x, y) {
+      for (const tri of mesh) {
+        if (inTriangle([x, y], tri.pxVerts[0], tri.pxVerts[1], tri.pxVerts[2])) {
+          const [lat, lng] = proj.toLatLng(tri.fn.invert([x, y]));
+          return { lat, lng, inMesh: true };
+        }
+      }
+      const [lat, lng] = proj.toLatLng(global.invert([x, y]));
+      return { lat, lng, inMesh: false };
     }
 
     // Image px per meter at a location, for drawing the GPS accuracy circle.
@@ -153,7 +179,7 @@ const Geo = (() => {
       });
     }
 
-    return { project, pxPerMeter, residuals, triangleCount: mesh.length };
+    return { project, unproject, pxPerMeter, residuals, triangleCount: mesh.length };
   }
 
   return { build };

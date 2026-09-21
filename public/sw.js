@@ -3,7 +3,7 @@
 // app.css is on the list and this worker's scope is "/", so it serves the
 // calibration page's stylesheet too: skip the bump and /calibrate keeps
 // rendering against the old CSS no matter how many times you deploy.
-const VERSION = '2026-09-21b';
+const VERSION = '2026-09-21c';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',
@@ -12,6 +12,11 @@ const ASSETS = [
   '/public/app.js',
   '/public/viewer.js',
   '/public/geo.js',
+  '/public/store.js',
+  '/public/share.js',
+  '/public/points.js',
+  '/public/qrcode.min.js',
+  '/public/jsQR.min.js',
   '/public/calibration.json',
   '/public/map.jpg',
   '/public/icon-192.png',
