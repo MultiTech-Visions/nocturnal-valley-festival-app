@@ -458,8 +458,9 @@ const PointsUI = (() => {
     const points = state.points.filter((p) => wanted.has(p.id));
     const favorites = els.shareSchedule.checked ? ScheduleUI.myFavorites() : [];
     const edits = els.shareEdits.checked ? ScheduleUI.myOverrides() : [];
-    if (points.length === 0 && favorites.length === 0 && edits.length === 0) {
-      status('Pick at least one point, your schedule, or your corrections to share.');
+    const finds = els.shareFinds.checked ? QuestsUI.myFinds().filter((f) => f.lat !== null) : [];
+    if (points.length === 0 && favorites.length === 0 && edits.length === 0 && finds.length === 0) {
+      status('Pick at least one point, your schedule, your corrections or your finds to share.');
       return;
     }
 
@@ -474,7 +475,7 @@ const PointsUI = (() => {
     }
 
     const name = els.shareName.value.trim() === '' ? 'Shared points' : els.shareName.value.trim();
-    const { frames } = await Share.encode(name, points, photos, favorites, edits);
+    const { frames } = await Share.encode(name, points, photos, favorites, edits, finds);
     show('qr-view');
     await goBright();
     stopPlaying = Share.play(els.qr, frames, (i, total) => {
@@ -535,6 +536,11 @@ const PointsUI = (() => {
     await reload();
     // Corrections become this phone's own edits, so they survive a later
     // sync the same way. Each one is still undoable on its own set.
+    if (payload.q.length > 0) {
+      await QuestsUI.applyFinds(payload.q.map(([questId, lat, lng, accuracy, px, foundAt]) => ({
+        questId, lat, lng, accuracy, px, foundAt, pointId: null
+      })));
+    }
     if (payload.o.length > 0) {
       await ScheduleUI.applyOverrides(payload.o.map(([eventId, patch]) => ({ eventId, patch, updatedAt: Date.now() })));
     }
@@ -546,6 +552,7 @@ const PointsUI = (() => {
     if (points.length > 0) parts.push(`${points.length} point${points.length === 1 ? '' : 's'}`);
     if (payload.f.length > 0) parts.push(`a ${payload.f.length}-set schedule`);
     if (payload.o.length > 0) parts.push(`${payload.o.length} schedule correction${payload.o.length === 1 ? '' : 's'}`);
+    if (payload.q.length > 0) parts.push(`${payload.q.length} hunt find${payload.q.length === 1 ? '' : 's'}`);
     status(`Received ${parts.join(', ')} from “${payload.n}”.`);
   }
 
@@ -566,7 +573,7 @@ const PointsUI = (() => {
       'scrim', 'hint', 'drop', 'share', 'controls', 'confirm-bar', 'place-ok', 'place-cancel', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
       'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-guide', 'detail-edit', 'detail-delete', 'detail-close',
       'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'lightbox', 'lightbox-img',
-      'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-edits', 'share-edits-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
+      'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-edits', 'share-edits-label', 'share-finds', 'share-finds-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
       'qr', 'qr-count', 'qr-done', 'video', 'scan-canvas', 'scan-count', 'scan-cancel'
     ]) {
       els[id.replace(/-(\w)/g, (m, c) => c.toUpperCase())] = $(id);
@@ -593,6 +600,13 @@ const PointsUI = (() => {
         : `Schedule corrections (${fixes})`;
       els.shareEdits.disabled = fixes === 0;
       els.shareEdits.checked = fixes > 0;
+      const found = QuestsUI.myFinds().filter((f) => f.lat !== null).length;
+      const pairs = QuestsUI.calibrationPairs().length;
+      els.shareFindsLabel.textContent = found === 0
+        ? 'Hunt finds (none yet)'
+        : `Hunt finds (${found}${pairs > 0 ? `, ${pairs} placed on the map` : ''})`;
+      els.shareFinds.disabled = found === 0;
+      els.shareFinds.checked = found > 0;
       renderShareList();
       renderBundles();
       show('share-panel');
@@ -657,5 +671,5 @@ const PointsUI = (() => {
     return reload();
   }
 
-  return { init, onMapTap, onMapLongPress };
+  return { init, reload, onMapTap, onMapLongPress };
 })();

@@ -47,14 +47,16 @@ function loadImage(src) {
 // Tabs. The schedule does not depend on the map or its calibration, so it
 // is wired up before anything that can bail out.
 function wireTabs() {
-  const tabs = { map: document.getElementById('tab-map'), schedule: document.getElementById('tab-schedule') };
+  const names = ['map', 'schedule', 'hunt'];
+  const tabs = {};
+  for (const name of names) tabs[name] = document.getElementById(`tab-${name}`);
   const pick = (which) => {
-    document.body.classList.toggle('view-schedule', which === 'schedule');
-    tabs.map.classList.toggle('on', which === 'map');
-    tabs.schedule.classList.toggle('on', which === 'schedule');
+    for (const name of names) {
+      document.body.classList.toggle(`view-${name}`, name !== 'map' && name === which);
+      tabs[name].classList.toggle('on', name === which);
+    }
   };
-  tabs.map.addEventListener('click', () => pick('map'));
-  tabs.schedule.addEventListener('click', () => pick('schedule'));
+  for (const name of names) tabs[name].addEventListener('click', () => pick(name));
 }
 
 async function init() {
@@ -74,7 +76,13 @@ async function init() {
   // user has armed "Drop a point".
   const viewer = new Viewer(els.map, img, {
     maxZoom: 6,
-    onTap: (x, y) => PointsUI.onMapTap(x, y),
+    // A find waiting to be placed on the artwork claims the tap; otherwise
+    // it belongs to whatever the points layer is doing.
+    onTap: (x, y) => {
+      QuestsUI.onMapTap(x, y).then((claimed) => {
+        if (!claimed) PointsUI.onMapTap(x, y);
+      });
+    },
     // Long press anywhere on the artwork means "take me to this spot",
     // whether or not there is a saved point on it.
     onLongPress: (x, y) => PointsUI.onMapLongPress(x, y)
@@ -94,6 +102,13 @@ async function init() {
   // can ask for it to be switched on when someone picks a destination.
   Compass.init({ requestGps: () => { if (!wanted) els.gpsToggle.click(); } });
   await PointsUI.init({ viewer, geo });
+  await QuestsUI.init({
+    viewer,
+    geo,
+    requestGps: () => { if (!wanted) els.gpsToggle.click(); },
+    // A find drops a pin, so the map has to redraw.
+    onChange: () => PointsUI.reload()
+  });
 
   let watchId = null;
   let wanted = false;

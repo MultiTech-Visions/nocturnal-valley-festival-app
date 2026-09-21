@@ -38,9 +38,44 @@
   <nav class="tabs">
     <button id="tab-map" class="tab on" type="button">Map</button>
     <button id="tab-schedule" class="tab" type="button">Schedule</button>
+    <button id="tab-hunt" class="tab" type="button">Hunt</button>
   </nav>
 
   <main id="map" class="viewer"></main>
+
+  <section id="hunt" class="hunt">
+    <div class="hunt-head">
+      <h2>Treasure hunt</h2>
+      <p id="hunt-progress" class="pt-meta"></p>
+      <div class="bar"><div id="hunt-bar" class="bar-fill"></div></div>
+      <p class="hint">Stand at the thing, press the button. Your phone's own fix is better than the guess the map shipped with — every find makes it sharper for everyone you share with.</p>
+    </div>
+    <ul id="hunt-list" class="quests"></ul>
+  </section>
+
+  <div id="place-bar" class="merge-bar place-bar" hidden>
+    <span id="place-what"></span>
+    <button id="place-stop" class="btn small" type="button">Skip</button>
+  </div>
+
+  <div id="celebrate" class="celebrate" hidden>
+    <div class="celebrate-card">
+      <div id="celebrate-icon" class="celebrate-icon"></div>
+      <h2>Found it!</h2>
+      <h3 id="celebrate-name"></h3>
+      <p id="celebrate-where" class="pt-meta"></p>
+      <img id="celebrate-shot" class="celebrate-shot" alt="" hidden>
+      <label class="photo-pick celebrate-cam">
+        <input id="celebrate-photo" type="file" accept="image/*" capture="environment" hidden>
+        <span class="btn primary">📸 Take the group photo</span>
+      </label>
+      <p id="celebrate-photo-name" class="pt-meta"></p>
+      <div class="cal-row">
+        <button id="celebrate-place" class="btn small" type="button" hidden>Show me on the map</button>
+        <button id="celebrate-done" class="btn small" type="button">Done</button>
+      </div>
+    </div>
+  </div>
 
   <section id="schedule" class="schedule">
     <div class="sched-bar">
@@ -205,6 +240,7 @@
     <input id="share-name" class="field" type="text" placeholder="Your name or camp (optional)" autocomplete="off">
     <label class="pick-all"><input id="share-schedule" type="checkbox" checked> <span id="share-schedule-label">My schedule</span></label>
     <label class="pick-all"><input id="share-edits" type="checkbox" checked> <span id="share-edits-label">Schedule corrections</span></label>
+    <label class="pick-all"><input id="share-finds" type="checkbox" checked> <span id="share-finds-label">Hunt finds</span></label>
     <ul id="share-list" class="points pick"></ul>
     <div class="cal-row">
       <button id="share-go" class="btn primary" type="button">Show QR</button>
@@ -237,6 +273,7 @@
   <script src="/public/store.js"></script>
   <script src="/public/share.js"></script>
   <script src="/public/compass.js"></script>
+  <script src="/public/quests.js"></script>
   <script src="/public/schedule.js"></script>
   <script src="/public/points.js"></script>
   <script src="/public/app.js"></script>

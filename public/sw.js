@@ -12,7 +12,7 @@
 // answers instantly and works offline, while a fresh copy is fetched and
 // stored for the next load. A stale client heals itself on the following
 // reload instead of waiting for someone to notice.
-const VERSION = 'V10';
+const VERSION = 'V11';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',
@@ -25,6 +25,8 @@ const ASSETS = [
   '/public/share.js',
   '/public/points.js',
   '/public/compass.js',
+  '/public/quests.js',
+  '/public/quests.json',
   '/public/schedule.js',
   '/public/schedule.json',
   '/public/qrcode.min.js',
