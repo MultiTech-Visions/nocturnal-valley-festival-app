@@ -392,7 +392,11 @@ const PointsUI = (() => {
       name.textContent = b.name;
       const meta = document.createElement('span');
       meta.className = 'pt-meta';
-      meta.textContent = `${b.count} point${b.count === 1 ? '' : 's'} · ${new Date(b.receivedAt).toLocaleDateString()}`;
+      const carried = [];
+      if (b.count > 0) carried.push(`${b.count} point${b.count === 1 ? '' : 's'}`);
+      // picks is absent on bundles received before schedules existed.
+      if (b.picks !== undefined && b.picks > 0) carried.push(`${b.picks} sets`);
+      meta.textContent = `${carried.join(' · ')} · ${new Date(b.receivedAt).toLocaleDateString()}`;
       const del = document.createElement('button');
       del.className = 'btn small';
       del.type = 'button';
@@ -400,6 +404,7 @@ const PointsUI = (() => {
       del.addEventListener('click', async () => {
         await Store.deleteBundle(b.id);
         await reload();
+        await ScheduleUI.refresh();
         renderBundles();
         renderShareList();
       });
@@ -430,8 +435,10 @@ const PointsUI = (() => {
       [...els.shareList.querySelectorAll('input:checked')].map((b) => b.dataset.id)
     );
     const points = state.points.filter((p) => wanted.has(p.id));
-    if (points.length === 0) {
-      status('Pick at least one point to share.');
+    const favorites = els.shareSchedule.checked ? ScheduleUI.myFavorites() : [];
+    const edits = els.shareEdits.checked ? ScheduleUI.myOverrides() : [];
+    if (points.length === 0 && favorites.length === 0 && edits.length === 0) {
+      status('Pick at least one point, your schedule, or your corrections to share.');
       return;
     }
 
@@ -446,7 +453,7 @@ const PointsUI = (() => {
     }
 
     const name = els.shareName.value.trim() === '' ? 'Shared points' : els.shareName.value.trim();
-    const { frames } = await Share.encode(name, points, photos);
+    const { frames } = await Share.encode(name, points, photos, favorites, edits);
     show('qr-view');
     await goBright();
     stopPlaying = Share.play(els.qr, frames, (i, total) => {
@@ -494,16 +501,31 @@ const PointsUI = (() => {
       return point;
     });
 
+    const setlist = payload.f.length === 0
+      ? null
+      : { id: bundleId, name: payload.n, receivedAt: Date.now(), eventIds: payload.f };
+
     await Store.addBundle(
-      { id: bundleId, name: payload.n, receivedAt: Date.now(), count: points.length },
+      { id: bundleId, name: payload.n, receivedAt: Date.now(), count: points.length, picks: payload.f.length },
       points,
-      photos
+      photos,
+      setlist
     );
     await reload();
+    // Corrections become this phone's own edits, so they survive a later
+    // sync the same way. Each one is still undoable on its own set.
+    if (payload.o.length > 0) {
+      await ScheduleUI.applyOverrides(payload.o.map(([eventId, patch]) => ({ eventId, patch, updatedAt: Date.now() })));
+    }
+    await ScheduleUI.refresh();
     renderBundles();
     renderShareList();
     show('share-panel');
-    status(`Received ${points.length} point${points.length === 1 ? '' : 's'} from “${payload.n}”.`);
+    const parts = [];
+    if (points.length > 0) parts.push(`${points.length} point${points.length === 1 ? '' : 's'}`);
+    if (payload.f.length > 0) parts.push(`a ${payload.f.length}-set schedule`);
+    if (payload.o.length > 0) parts.push(`${payload.o.length} schedule correction${payload.o.length === 1 ? '' : 's'}`);
+    status(`Received ${parts.join(', ')} from “${payload.n}”.`);
   }
 
   function stopReceive() {
@@ -523,7 +545,7 @@ const PointsUI = (() => {
       'scrim', 'hint', 'drop', 'share', 'controls', 'confirm-bar', 'place-ok', 'place-cancel', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
       'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-edit', 'detail-delete', 'detail-close',
       'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'lightbox', 'lightbox-img',
-      'share-list', 'share-name', 'share-go', 'share-close', 'bundle-list', 'receive-go',
+      'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-edits', 'share-edits-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
       'qr', 'qr-count', 'qr-done', 'video', 'scan-canvas', 'scan-count', 'scan-cancel'
     ]) {
       els[id.replace(/-(\w)/g, (m, c) => c.toUpperCase())] = $(id);
@@ -538,6 +560,18 @@ const PointsUI = (() => {
       // Re-read before rendering: one indexed read is cheap, and it means the
       // sheet can never show a list that something else has already changed.
       await reload();
+      const picks = ScheduleUI.myFavorites().length;
+      els.shareScheduleLabel.textContent = picks === 0
+        ? 'My schedule (nothing starred yet)'
+        : `My schedule (${picks} set${picks === 1 ? '' : 's'})`;
+      els.shareSchedule.disabled = picks === 0;
+      els.shareSchedule.checked = picks > 0;
+      const fixes = ScheduleUI.editedCount();
+      els.shareEditsLabel.textContent = fixes === 0
+        ? 'Schedule corrections (none made)'
+        : `Schedule corrections (${fixes})`;
+      els.shareEdits.disabled = fixes === 0;
+      els.shareEdits.checked = fixes > 0;
       renderShareList();
       renderBundles();
       show('share-panel');

@@ -1,0 +1,761 @@
+{
+  "_readme": "Times are 24h and count on past midnight: a set at 1:30am on Friday night is '25:30', so it stays on the night it started. Ids are stable -- people's starred sets and local corrections are keyed to them, so never renumber an id when editing a row. Set start/end to null for an act with no announced time.",
+  "festival": {
+    "name": "Nocturnal Valley",
+    "venue": "Astral Valley Art Park, French Village, MO"
+  },
+  "days": [
+    {
+      "id": "thu",
+      "label": "Thu",
+      "date": "2026-09-24",
+      "start": "15:00",
+      "end": "31:30"
+    },
+    {
+      "id": "fri",
+      "label": "Fri",
+      "date": "2026-09-25",
+      "start": "12:00",
+      "end": "31:30"
+    },
+    {
+      "id": "sat",
+      "label": "Sat",
+      "date": "2026-09-26",
+      "start": "12:00",
+      "end": "32:00"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "astral",
+      "name": "Astral",
+      "kind": "stage",
+      "sound": "Funktion-One",
+      "color": "#b06bff"
+    },
+    {
+      "id": "nocturnal",
+      "name": "Nocturnal",
+      "kind": "stage",
+      "sound": "Hennessy",
+      "color": "#c9b02a"
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "kind": "stage",
+      "sound": "Void Acoustics",
+      "color": "#4a8f3c"
+    },
+    {
+      "id": "renegade",
+      "name": "Renegade",
+      "kind": "stage",
+      "sound": "",
+      "color": "#f08a24"
+    },
+    {
+      "id": "workshops",
+      "name": "Workshops",
+      "kind": "activity",
+      "sound": "",
+      "color": "#4ad6a0"
+    },
+    {
+      "id": "art",
+      "name": "Art",
+      "kind": "activity",
+      "sound": "",
+      "color": "#ff7aa8"
+    },
+    {
+      "id": "wellness",
+      "name": "Wellness",
+      "kind": "activity",
+      "sound": "",
+      "color": "#9ad14b"
+    }
+  ],
+  "events": [
+    {
+      "id": "thu-noc-dropja",
+      "title": "DROPJA",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "15:20",
+      "end": "16:30",
+      "note": "Bachelor set"
+    },
+    {
+      "id": "thu-noc-duffrey",
+      "title": "Duffrey",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "16:30",
+      "end": "17:30"
+    },
+    {
+      "id": "thu-noc-chmura",
+      "title": "Chmura",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "17:30",
+      "end": "18:30"
+    },
+    {
+      "id": "thu-noc-vctre",
+      "title": "VCTRE",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "18:30",
+      "end": "19:30"
+    },
+    {
+      "id": "thu-noc-tiedye-ky",
+      "title": "Tiedye Ky",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "19:30",
+      "end": "20:30"
+    },
+    {
+      "id": "thu-noc-esseks",
+      "title": "Esseks",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "20:30",
+      "end": "21:30"
+    },
+    {
+      "id": "thu-noc-ivy-lab",
+      "title": "Ivy Lab",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "21:30",
+      "end": "22:30"
+    },
+    {
+      "id": "thu-noc-troyboi",
+      "title": "TroyBoi",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "22:30",
+      "end": "23:30"
+    },
+    {
+      "id": "thu-noc-blaap",
+      "title": "BLAAP",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "23:30",
+      "end": "24:30"
+    },
+    {
+      "id": "thu-noc-cool-customer",
+      "title": "Cool Customer",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "24:30",
+      "end": "25:30"
+    },
+    {
+      "id": "thu-noc-flava-d",
+      "title": "Flava D",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "25:30",
+      "end": "26:30"
+    },
+    {
+      "id": "thu-noc-monty",
+      "title": "Monty",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "26:30",
+      "end": "27:30"
+    },
+    {
+      "id": "thu-noc-hijinx",
+      "title": "Hijinx",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "27:30",
+      "end": "28:30"
+    },
+    {
+      "id": "thu-noc-echo-brown",
+      "title": "Echo Brown",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "28:30",
+      "end": "29:30"
+    },
+    {
+      "id": "thu-noc-dmvu",
+      "title": "DMVU",
+      "track": "nocturnal",
+      "day": "thu",
+      "start": "29:30",
+      "end": "31:15"
+    },
+    {
+      "id": "fri-ast-michal-menert",
+      "title": "Michal Menert",
+      "track": "astral",
+      "day": "fri",
+      "start": "15:00",
+      "end": "16:00"
+    },
+    {
+      "id": "fri-ast-ab-soul",
+      "title": "Ab Soul",
+      "track": "astral",
+      "day": "fri",
+      "start": "16:00",
+      "end": "17:00"
+    },
+    {
+      "id": "fri-ast-k-l-o",
+      "title": "K.L.O",
+      "track": "astral",
+      "day": "fri",
+      "start": "17:00",
+      "end": "18:00"
+    },
+    {
+      "id": "fri-ast-mr-bill",
+      "title": "Mr. Bill",
+      "track": "astral",
+      "day": "fri",
+      "start": "18:00",
+      "end": "19:00",
+      "note": "IDN sunset"
+    },
+    {
+      "id": "fri-ast-the-disco-biscuits",
+      "title": "The Disco Biscuits",
+      "track": "astral",
+      "day": "fri",
+      "start": "19:30",
+      "end": "20:30"
+    },
+    {
+      "id": "fri-ast-tractor-beam",
+      "title": "Tractor Beam",
+      "track": "astral",
+      "day": "fri",
+      "start": "20:45",
+      "end": "21:45"
+    },
+    {
+      "id": "fri-ast-mickman",
+      "title": "Mickman",
+      "track": "astral",
+      "day": "fri",
+      "start": "22:15",
+      "end": "23:15"
+    },
+    {
+      "id": "fri-ast-detox-unit",
+      "title": "Detox Unit",
+      "track": "astral",
+      "day": "fri",
+      "start": "23:15",
+      "end": "24:15"
+    },
+    {
+      "id": "fri-ast-jade-cicada",
+      "title": "Jade Cicada",
+      "track": "astral",
+      "day": "fri",
+      "start": "24:15",
+      "end": "25:15"
+    },
+    {
+      "id": "fri-ast-halogenix",
+      "title": "Halogenix",
+      "track": "astral",
+      "day": "fri",
+      "start": "28:30",
+      "end": "29:30"
+    },
+    {
+      "id": "fri-ast-supertask",
+      "title": "Supertask",
+      "track": "astral",
+      "day": "fri",
+      "start": "29:30",
+      "end": "31:30",
+      "note": "2 hour journey sunrise"
+    },
+    {
+      "id": "fri-noc-grll-smth-vs-crawboil",
+      "title": "GRLL SMTH vs Crawboil",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "13:00",
+      "end": "15:00"
+    },
+    {
+      "id": "fri-noc-miilk",
+      "title": "MIILK",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "15:00",
+      "end": "16:00"
+    },
+    {
+      "id": "fri-noc-veil",
+      "title": "Veil",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "16:00",
+      "end": "17:00"
+    },
+    {
+      "id": "fri-noc-a-hundred-drums-b2b-zen-sele",
+      "title": "A Hundred Drums b2b Zen Selekta",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "17:00",
+      "end": "18:00"
+    },
+    {
+      "id": "fri-noc-zero",
+      "title": "Zero",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "18:00",
+      "end": "19:00",
+      "note": "140 set"
+    },
+    {
+      "id": "fri-noc-bricksquash-mafia",
+      "title": "Bricksquash Mafia",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "19:00",
+      "end": "20:00"
+    },
+    {
+      "id": "fri-noc-bommer",
+      "title": "Bommer",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "20:00",
+      "end": "21:00"
+    },
+    {
+      "id": "fri-noc-richard-finger",
+      "title": "Richard Finger",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "21:00",
+      "end": "22:00"
+    },
+    {
+      "id": "fri-noc-borne",
+      "title": "Borne",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "24:30",
+      "end": "25:30"
+    },
+    {
+      "id": "fri-noc-peekaboo-b2b-lyny",
+      "title": "PEEKABOO b2b LYNY",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "25:30",
+      "end": "26:30"
+    },
+    {
+      "id": "fri-noc-caspa-b2b-the-widdler",
+      "title": "Caspa b2b The Widdler",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "26:30",
+      "end": "27:30"
+    },
+    {
+      "id": "fri-noc-distinct-motive-b2b",
+      "title": "Distinct Motive b2b ?????",
+      "track": "nocturnal",
+      "day": "fri",
+      "start": "27:30",
+      "end": "28:30",
+      "note": "Guest to be announced"
+    },
+    {
+      "id": "fri-for-audio-goblin",
+      "title": "Audio Goblin",
+      "track": "forest",
+      "day": "fri",
+      "start": "12:00",
+      "end": "13:00"
+    },
+    {
+      "id": "fri-for-goosebumpz",
+      "title": "Goosebumpz",
+      "track": "forest",
+      "day": "fri",
+      "start": "13:00",
+      "end": "14:00"
+    },
+    {
+      "id": "fri-for-ooga",
+      "title": "OOGA",
+      "track": "forest",
+      "day": "fri",
+      "start": "14:00",
+      "end": "15:00"
+    },
+    {
+      "id": "fri-for-crawdad-sniper",
+      "title": "Crawdad Sniper",
+      "track": "forest",
+      "day": "fri",
+      "start": "15:00",
+      "end": "16:00"
+    },
+    {
+      "id": "fri-for-acid-katz",
+      "title": "Acid Katz",
+      "track": "forest",
+      "day": "fri",
+      "start": "25:20",
+      "end": "26:10"
+    },
+    {
+      "id": "fri-for-ott",
+      "title": "Ott.",
+      "track": "forest",
+      "day": "fri",
+      "start": "26:10",
+      "end": "27:10"
+    },
+    {
+      "id": "fri-for-supersillyus",
+      "title": "Supersillyus",
+      "track": "forest",
+      "day": "fri",
+      "start": "27:10",
+      "end": "28:00"
+    },
+    {
+      "id": "fri-for-humandala",
+      "title": "Humandala",
+      "track": "forest",
+      "day": "fri",
+      "start": "28:00",
+      "end": "28:50"
+    },
+    {
+      "id": "fri-for-lone-drum",
+      "title": "Lone Drum",
+      "track": "forest",
+      "day": "fri",
+      "start": "28:50",
+      "end": "29:30"
+    },
+    {
+      "id": "sat-ast-yoko",
+      "title": "Yoko",
+      "track": "astral",
+      "day": "sat",
+      "start": "14:00",
+      "end": "14:45"
+    },
+    {
+      "id": "sat-ast-chris-karns",
+      "title": "Chris Karns",
+      "track": "astral",
+      "day": "sat",
+      "start": "14:45",
+      "end": "15:35"
+    },
+    {
+      "id": "sat-ast-cut-chemist",
+      "title": "Cut Chemist",
+      "track": "astral",
+      "day": "sat",
+      "start": "15:35",
+      "end": "16:35"
+    },
+    {
+      "id": "sat-ast-maddy-o-neal",
+      "title": "Maddy O'Neal",
+      "track": "astral",
+      "day": "sat",
+      "start": "16:35",
+      "end": "17:35",
+      "note": "Madhaus"
+    },
+    {
+      "id": "sat-ast-thought-process",
+      "title": "Thought Process",
+      "track": "astral",
+      "day": "sat",
+      "start": "18:00",
+      "end": "18:50",
+      "note": "Live band"
+    },
+    {
+      "id": "sat-ast-sts9",
+      "title": "STS9",
+      "track": "astral",
+      "day": "sat",
+      "start": "19:45",
+      "end": "20:45",
+      "note": "Set one"
+    },
+    {
+      "id": "sat-ast-sts9-2",
+      "title": "STS9",
+      "track": "astral",
+      "day": "sat",
+      "start": "21:00",
+      "end": "22:00",
+      "note": "Set two"
+    },
+    {
+      "id": "sat-ast-emancipator",
+      "title": "Emancipator",
+      "track": "astral",
+      "day": "sat",
+      "start": "22:30",
+      "end": "23:30"
+    },
+    {
+      "id": "sat-ast-g-jones",
+      "title": "G Jones",
+      "track": "astral",
+      "day": "sat",
+      "start": "23:30",
+      "end": "24:30"
+    },
+    {
+      "id": "sat-ast-daily-bread",
+      "title": "Daily Bread",
+      "track": "astral",
+      "day": "sat",
+      "start": "24:40",
+      "end": "25:40"
+    },
+    {
+      "id": "sat-ast-villager",
+      "title": "Villager",
+      "track": "astral",
+      "day": "sat",
+      "start": "27:45",
+      "end": "28:45"
+    },
+    {
+      "id": "sat-ast-mindex",
+      "title": "Mindex",
+      "track": "astral",
+      "day": "sat",
+      "start": "28:45",
+      "end": "29:45",
+      "note": "Downtempo"
+    },
+    {
+      "id": "sat-ast-resonant-language",
+      "title": "Resonant Language",
+      "track": "astral",
+      "day": "sat",
+      "start": "29:45",
+      "end": "31:00",
+      "note": "Ambient hardware sunrise"
+    },
+    {
+      "id": "sat-ast-mindchatter",
+      "title": "Mindchatter",
+      "track": "astral",
+      "day": "sat",
+      "start": "31:00",
+      "end": "32:00",
+      "note": "Breakfast set"
+    },
+    {
+      "id": "sat-noc-voodoo",
+      "title": "Voodoo",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "14:30",
+      "end": "15:30"
+    },
+    {
+      "id": "sat-noc-mantra-sounds",
+      "title": "Mantra Sounds",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "15:30",
+      "end": "16:30"
+    },
+    {
+      "id": "sat-noc-restraint",
+      "title": "Restraint",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "16:30",
+      "end": "17:30"
+    },
+    {
+      "id": "sat-noc-apparition-b2b-medicine-plac",
+      "title": "Apparition b2b Medicine Place",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "17:30",
+      "end": "18:30"
+    },
+    {
+      "id": "sat-noc-chef-boyarbeatz",
+      "title": "Chef Boyarbeatz",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "18:30",
+      "end": "19:30"
+    },
+    {
+      "id": "sat-noc-potions",
+      "title": "Potions",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "19:30",
+      "end": "20:30",
+      "note": "Farewell set"
+    },
+    {
+      "id": "sat-noc-fly",
+      "title": "Fly",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "20:30",
+      "end": "21:30"
+    },
+    {
+      "id": "sat-noc-casey-club",
+      "title": "Casey Club",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "21:30",
+      "end": "22:30"
+    },
+    {
+      "id": "sat-noc-mefjus-w-daxta-mc",
+      "title": "Mefjus w/ Daxta MC",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "24:30",
+      "end": "25:45"
+    },
+    {
+      "id": "sat-noc-hamdi",
+      "title": "Hamdi",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "25:45",
+      "end": "26:45"
+    },
+    {
+      "id": "sat-noc-skream",
+      "title": "Skream",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "26:45",
+      "end": "27:45",
+      "note": "Dubstep"
+    },
+    {
+      "id": "sat-noc-detox-unit",
+      "title": "Detox Unit",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "27:45",
+      "end": "28:45"
+    },
+    {
+      "id": "sat-noc-lusid",
+      "title": "Lusid",
+      "track": "nocturnal",
+      "day": "sat",
+      "start": "28:45",
+      "end": "29:30"
+    },
+    {
+      "id": "sat-for-alex-unger",
+      "title": "Alex Unger",
+      "track": "forest",
+      "day": "sat",
+      "start": "12:00",
+      "end": "13:00"
+    },
+    {
+      "id": "sat-for-tf-marz",
+      "title": "TF Marz",
+      "track": "forest",
+      "day": "sat",
+      "start": "13:00",
+      "end": "14:00"
+    },
+    {
+      "id": "sat-for-pheel",
+      "title": "Pheel",
+      "track": "forest",
+      "day": "sat",
+      "start": "14:00",
+      "end": "15:00"
+    },
+    {
+      "id": "sat-for-parkbreezy",
+      "title": "Parkbreezy",
+      "track": "forest",
+      "day": "sat",
+      "start": "15:00",
+      "end": "16:00"
+    },
+    {
+      "id": "sat-for-flintwick",
+      "title": "Flintwick",
+      "track": "forest",
+      "day": "sat",
+      "start": "25:40",
+      "end": "26:30"
+    },
+    {
+      "id": "sat-for-schmoop",
+      "title": "Schmoop",
+      "track": "forest",
+      "day": "sat",
+      "start": "26:30",
+      "end": "27:20"
+    },
+    {
+      "id": "sat-for-somatoast",
+      "title": "Somatoast",
+      "track": "forest",
+      "day": "sat",
+      "start": "27:20",
+      "end": "28:10"
+    },
+    {
+      "id": "sat-for-alejo",
+      "title": "Alejo",
+      "track": "forest",
+      "day": "sat",
+      "start": "28:10",
+      "end": "28:55"
+    },
+    {
+      "id": "sat-for-mike-wallis",
+      "title": "Mike Wallis",
+      "track": "forest",
+      "day": "sat",
+      "start": "28:55",
+      "end": "29:40"
+    }
+  ]
+}

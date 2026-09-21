@@ -44,7 +44,23 @@ function loadImage(src) {
   });
 }
 
+// Tabs. The schedule does not depend on the map or its calibration, so it
+// is wired up before anything that can bail out.
+function wireTabs() {
+  const tabs = { map: document.getElementById('tab-map'), schedule: document.getElementById('tab-schedule') };
+  const pick = (which) => {
+    document.body.classList.toggle('view-schedule', which === 'schedule');
+    tabs.map.classList.toggle('on', which === 'map');
+    tabs.schedule.classList.toggle('on', which === 'schedule');
+  };
+  tabs.map.addEventListener('click', () => pick('map'));
+  tabs.schedule.addEventListener('click', () => pick('schedule'));
+}
+
 async function init() {
+  wireTabs();
+  await ScheduleUI.init();
+
   const res = await fetch('/public/calibration.json');
   if (!res.ok) throw new Error(`calibration.json returned ${res.status}`);
   const calib = await res.json();
