@@ -21,13 +21,26 @@
 
   <main id="map" class="viewer"></main>
 
-  <nav class="controls">
-    <button id="gps-toggle" class="btn primary" type="button">Show my location</button>
-    <button id="recenter" class="btn" type="button" disabled>Center on me</button>
-    <button id="drop" class="btn" type="button">Drop a point</button>
-    <button id="share" class="btn" type="button">Share</button>
-  </nav>
-  <div id="hint" class="hint"></div>
+  <aside id="sidebar" class="sidebar" aria-label="Saved points">
+    <div class="sidebar-head">
+      <h2>Points</h2>
+      <button id="sidebar-close" class="btn small" type="button">Hide</button>
+    </div>
+    <ul id="point-list" class="points side"></ul>
+  </aside>
+  <button id="sidebar-grip" class="sidebar-grip" type="button" aria-label="Open points list"></button>
+
+  <!-- One footer owns the bottom inset. The hint used to sit outside the
+       controls with no inset of its own, so a curved screen ate it. -->
+  <footer class="dock">
+    <div id="hint" class="hint"></div>
+    <nav class="controls">
+      <button id="gps-toggle" class="btn primary" type="button">Show my location</button>
+      <button id="recenter" class="btn" type="button" disabled>Center on me</button>
+      <button id="drop" class="btn" type="button">Drop a point</button>
+      <button id="share" class="btn" type="button">Share</button>
+    </nav>
+  </footer>
 
   <div id="scrim" class="scrim" hidden></div>
 
@@ -46,17 +59,21 @@
     </div>
   </section>
 
-  <section id="point-detail" class="sheet" hidden>
+  <section id="point-detail" class="callout" hidden>
     <h2 id="detail-name"></h2>
-    <img id="detail-photo" class="detail-photo" alt="" hidden>
+    <img id="detail-photo" class="detail-thumb" alt="" hidden>
     <p id="detail-note" class="pt-meta"></p>
     <p id="detail-origin" class="pt-meta"></p>
     <div class="cal-row">
-      <button id="detail-edit" class="btn" type="button">Edit</button>
-      <button id="detail-delete" class="btn" type="button">Delete</button>
-      <button id="detail-close" class="btn" type="button">Close</button>
+      <button id="detail-edit" class="btn small" type="button">Edit</button>
+      <button id="detail-delete" class="btn small" type="button">Delete</button>
+      <button id="detail-close" class="btn small" type="button">Close</button>
     </div>
   </section>
+
+  <div id="lightbox" class="lightbox" hidden>
+    <img id="lightbox-img" alt="">
+  </div>
 
   <section id="share-panel" class="sheet" hidden>
     <h2>Share points</h2>
