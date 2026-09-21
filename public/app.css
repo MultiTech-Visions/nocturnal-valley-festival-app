@@ -102,25 +102,38 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
    pointer events on its marker layer, so opt these back in. */
 .viewer > .cal-dot.fixed, .cal-dot.fixed.sat { pointer-events: auto; cursor: pointer; }
 
-/* Inline delete confirm. Anchored above its dot or button, never a dialog. */
+/* Inline delete confirm: a speech bubble anchored to its dot, never a
+   dialog. .below flips the arrow for points near the top of a pane. */
 .confirm {
   position: fixed; z-index: 4000; transform: translate(-50%, -100%);
-  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
-  border-radius: 10px; white-space: nowrap; font-size: 13px;
-  background: var(--night); border: 2px solid #4a3378;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; gap: 8px; padding: 7px 9px;
+  border-radius: 12px; white-space: nowrap; font-size: 13px; font-weight: 700;
+  background: var(--night); color: var(--road); border: 2px solid #4a3378;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
 }
+.confirm.below { transform: translate(-50%, 0); }
 .confirm::after {
-  content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
-  border: 6px solid transparent; border-top-color: #4a3378;
+  content: ''; position: absolute; top: 100%; left: 50%; margin-left: -7px;
+  border: 7px solid transparent; border-top-color: #4a3378;
+}
+.confirm.below::after {
+  top: auto; bottom: 100%;
+  border-top-color: transparent; border-bottom-color: #4a3378;
 }
 .confirm-btn {
-  display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
-  border-radius: 50%; border: 2px solid transparent; cursor: pointer;
-  font-size: 14px; font-weight: 800; line-height: 1;
+  padding: 0; border: 2px solid transparent; cursor: pointer;
+  font-weight: 800; line-height: 1;
 }
-.confirm-btn.yes { background: var(--ember); color: var(--deep); }
-.confirm-btn.no { background: transparent; border-color: #4a3378; color: var(--dim); }
+.confirm-btn.del {
+  padding: 5px 11px; border-radius: 8px; font-size: 13px;
+  background: transparent; border-color: var(--ember); color: var(--ember);
+}
+.confirm-btn.yes, .confirm-btn.no {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border-radius: 50%; font-size: 15px; color: #fff;
+}
+.confirm-btn.yes { background: #2ea043; }
+.confirm-btn.no { background: #d1242f; }
 .confirm-btn:focus-visible { outline: 3px solid var(--owl); outline-offset: 2px; }
 
 @media (max-width: 760px) {
