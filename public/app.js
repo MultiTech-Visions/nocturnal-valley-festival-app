@@ -47,7 +47,7 @@ function loadImage(src) {
 // Tabs. The schedule does not depend on the map or its calibration, so it
 // is wired up before anything that can bail out.
 function wireTabs() {
-  const names = ['map', 'schedule', 'hunt'];
+  const names = ['map', 'schedule'];
   const tabs = {};
   for (const name of names) tabs[name] = document.getElementById(`tab-${name}`);
   const pick = (which) => {
@@ -55,6 +55,9 @@ function wireTabs() {
       document.body.classList.toggle(`view-${name}`, name !== 'map' && name === which);
       tabs[name].classList.toggle('on', name === which);
     }
+    // A callout is anchored to a pin on the map. Leaving the map leaves the
+    // thing it points at, so it goes with it.
+    PointsUI.closeCallout();
   };
   for (const name of names) tabs[name].addEventListener('click', () => pick(name));
 

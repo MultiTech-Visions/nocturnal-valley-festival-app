@@ -37,7 +37,7 @@ const Badges = (() => {
   // object built by the caller, so nothing here reaches into storage.
   const RULES = {
     finds: (r, c) => c.finds.filter((f) => f.lat !== null).length >= r.n,
-    all_finds: (r, c) => c.questTotal > 0 && c.finds.length >= c.questTotal,
+    all_finds: (r, c) => c.questTotal > 0 && c.foundIds.size >= c.questTotal,
     placed: (r, c) => c.finds.filter((f) => f.px !== null).length >= r.n,
     category: (r, c) => {
       const inCat = c.quests.filter((q) => q.category === r.id);
@@ -93,18 +93,28 @@ const Badges = (() => {
     showNext();
   }
 
-  // One at a time, so three unlocking together do not stack on top of
-  // each other.
+  // One at a time, so three unlocking together do not stack on top of each
+  // other -- and never over the top of the find celebration, whose buttons
+  // the toast sits directly on. The queue is flushed when that closes.
   function showNext() {
     if (queue.length === 0 || !els.toast.hidden) return;
+    const celebrating = document.getElementById('celebrate');
+    if (celebrating !== null && !celebrating.hidden) return;
     const badge = queue.shift();
     draw(els.toastArt, badge, false);
     els.toastName.textContent = badge.name;
     els.toastBlurb.textContent = badge.blurb;
     els.toast.hidden = false;
+    // Goes away on its own. A toast that waits to be dismissed ends up
+    // parked over whatever the person does next.
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(dismissToast, 6000);
   }
 
+  let toastTimer = null;
+
   function dismissToast() {
+    clearTimeout(toastTimer);
     els.toast.hidden = true;
     showNext();
   }
@@ -170,5 +180,5 @@ const Badges = (() => {
     render();
   }
 
-  return { init, evaluate, bump, render, has, count, draw };
+  return { init, evaluate, bump, render, has, count, draw, flush: showNext };
 })();

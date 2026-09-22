@@ -346,13 +346,27 @@ const PointsUI = (() => {
   }
 
   // ---------- Sidebar ----------
+  // Yours and other people's are different things and belong in different
+  // groups: one you can edit, one arrived from a camp mate.
   function renderSidebar() {
-    els.pointList.innerHTML = '';
-    if (state.points.length === 0) {
-      els.pointList.innerHTML = '<li class="empty">No points yet. Use “Drop a point”.</li>';
+    const mine = state.points.filter((p) => p.bundleId === null);
+    const shared = state.points.filter((p) => p.bundleId !== null);
+    fillList(els.pointList, mine, 'No points yet. Use the pin button.');
+    fillList(els.sharedList, shared, 'Nothing shared with you yet.');
+    els.mineCount.textContent = `${mine.length}`;
+    els.sharedCount.textContent = `${shared.length}`;
+  }
+
+  function fillList(list, points, emptyText) {
+    list.innerHTML = '';
+    if (points.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = emptyText;
+      list.appendChild(li);
       return;
     }
-    for (const pt of state.points) {
+    for (const pt of points) {
       const li = document.createElement('li');
       const dot = document.createElement('span');
       dot.className = `pin-head${pt.bundleId === null ? '' : ' shared'}`;
@@ -364,7 +378,7 @@ const PointsUI = (() => {
       meta.textContent = pt.photoId === null ? '' : '📷';
       li.append(dot, name, meta);
       li.addEventListener('click', () => centerOn(pt));
-      els.pointList.appendChild(li);
+      list.appendChild(li);
     }
   }
 
@@ -592,7 +606,7 @@ const PointsUI = (() => {
     for (const id of [
       'scrim', 'hint', 'drop', 'share', 'controls', 'confirm-bar', 'place-ok', 'place-cancel', 'label', 'note', 'photo', 'photo-name', 'form-save', 'form-cancel',
       'point-detail', 'detail-name', 'detail-note', 'detail-origin', 'detail-photo', 'detail-guide', 'detail-edit', 'detail-delete', 'detail-close',
-      'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'lightbox', 'lightbox-img',
+      'sidebar', 'sidebar-grip', 'sidebar-close', 'point-list', 'shared-list', 'mine-count', 'shared-count', 'lightbox', 'lightbox-img',
       'share-list', 'share-name', 'share-schedule', 'share-schedule-label', 'share-edits', 'share-edits-label', 'share-finds', 'share-finds-label', 'share-go', 'share-close', 'bundle-list', 'receive-go',
       'qr', 'qr-count', 'qr-done', 'video', 'scan-canvas', 'scan-count', 'scan-cancel'
     ]) {
@@ -691,5 +705,5 @@ const PointsUI = (() => {
     return reload();
   }
 
-  return { init, reload, onMapTap, onMapLongPress };
+  return { init, reload, closeCallout, onMapTap, onMapLongPress };
 })();
