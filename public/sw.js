@@ -12,7 +12,7 @@
 // answers instantly and works offline, while a fresh copy is fetched and
 // stored for the next load. A stale client heals itself on the following
 // reload instead of waiting for someone to notice.
-const VERSION = 'V14';
+const VERSION = 'V15';
 const CACHE = `nv-${VERSION}`;
 const ASSETS = [
   '/',

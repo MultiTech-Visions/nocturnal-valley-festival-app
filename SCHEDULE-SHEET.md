@@ -21,7 +21,18 @@ in any order, extra columns ignored:
 Trailing blank cells are fine — a row can stop after `title` and the rest
 reads as "to be announced".
 
-## Setup — private sheet (preferred)
+## Setup — published CSV (start here)
+
+Fewest moving parts, and the one to use unless the sheet holds something you
+would not put on a public page. The URL is readable by anyone who has it; a
+set-time grid is not a secret.
+
+**File → Share → Publish to web** → the **Events** tab → **Comma-separated
+values (.csv)** → Publish. Put that URL in `SCHEDULE_EVENTS_CSV_URL` and leave
+`SCHEDULE_SHEET_ID` unset (it wins if both are set).
+`SCHEDULE_TRACKS_CSV_URL` does the same for the stage list.
+
+## Setup — private sheet via the service account
 
 The sheet stays private. Nothing is published, no API key or JSON credential
 file exists anywhere: Cloud Run mints a token for its own service account at
@@ -64,17 +75,12 @@ The Sync button shows the reason verbatim:
 - *"Could not get a service-account token"* — only Cloud Run can mint one;
   this is expected if you are running the service locally.
 
-## Setup — published CSV (fallback)
+## When the service-account route will not start
 
-Simpler, but **the CSV URL is readable by anyone who gets hold of it**, so do
-not use it for anything you would not put on a public page.
-
-**File → Share → Publish to web** → the sheet → **Comma-separated values
-(.csv)** → publish, then set `SCHEDULE_EVENTS_CSV_URL` to the URL
-(`https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?gid=0&single=true&output=csv`).
-`SCHEDULE_TRACKS_CSV_URL` does the same for stages.
-
-`SCHEDULE_SHEET_ID` wins if both are set.
+`/api/diag` prints what every metadata attempt returned, which env vars are
+set (never their values), and whether `K_SERVICE` says this is Cloud Run at
+all. If a token cannot be minted there, use the published-CSV route above
+rather than fighting it -- it reaches the same sheet by a different door.
 
 ## The columns
 

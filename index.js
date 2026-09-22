@@ -96,34 +96,79 @@ let tokenCache = null;
 // point: no credentials are stored, shipped, or rotatable-by-mistake.
 // spreadsheets.readonly is asked for explicitly -- the default
 // cloud-platform token is not a scope the Sheets API accepts.
-const METADATA_TOKEN = 'http://metadata.google.internal/computeMetadata/v1/instance/service-account/default/token';
-// Asking for a narrower scope is preferable, but Cloud Run's metadata server
-// answers 404 to the ?scopes= form that Compute Engine accepts. So: try the
-// narrow one, fall back to the service's own default token, and remember
-// which of the two this platform actually answers.
-const TOKEN_URLS = [
-  `${METADATA_TOKEN}?scopes=https://www.googleapis.com/auth/spreadsheets.readonly`,
-  METADATA_TOKEN
-];
-let tokenUrlIndex = 0;
+// Metadata lives behind a link-local address. The DNS name is the documented
+// way in, the numeric address is what the name resolves to and keeps working
+// when DNS inside the container does not. Scoped first, because a narrow
+// token is better; the service's default token second, because some
+// platforms reject the ?scopes= form outright.
+const METADATA_HOSTS = ['http://metadata.google.internal', 'http://169.254.169.254'];
+const TOKEN_PATH = '/computeMetadata/v1/instance/service-account/default/token';
+const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+
+function tokenAttempts() {
+  const out = [];
+  for (const host of METADATA_HOSTS) {
+    out.push({ label: `${host} scoped`, url: `${host}${TOKEN_PATH}?scopes=${SHEETS_SCOPE}` });
+    out.push({ label: `${host} default`, url: `${host}${TOKEN_PATH}` });
+  }
+  return out;
+}
+
+// Reports what each attempt actually did rather than collapsing them all to
+// one number, because "404" alone gave no way to tell a wrong path from a
+// wrong host from no metadata server at all.
+async function probeToken() {
+  const results = [];
+  for (const attempt of tokenAttempts()) {
+    try {
+      const res = await fetch(attempt.url, {
+        headers: { 'Metadata-Flavor': 'Google' },
+        signal: AbortSignal.timeout(3000)
+      });
+      const body = await res.text();
+      results.push({
+        ...attempt,
+        status: res.status,
+        ok: res.ok,
+        // Never the token itself; just enough to tell a real one apart.
+        detail: res.ok ? `token of ${body.length} bytes` : body.slice(0, 160)
+      });
+    } catch (err) {
+      results.push({ ...attempt, status: 0, ok: false, detail: `${err.name}: ${err.message}` });
+    }
+  }
+  return results;
+}
+
+let tokenAttemptIndex = 0;
 
 async function accessToken() {
   if (tokenCache !== null && Date.now() < tokenCache.expires) return tokenCache.token;
 
+  const attempts = tokenAttempts();
   const tried = [];
-  for (let i = 0; i < TOKEN_URLS.length; i++) {
-    const at = (tokenUrlIndex + i) % TOKEN_URLS.length;
-    const res = await fetch(TOKEN_URLS[at], { headers: { 'Metadata-Flavor': 'Google' } });
-    if (res.ok) {
-      const body = await res.json();
-      tokenUrlIndex = at;
-      // A minute of headroom, so a token never expires mid-request.
-      tokenCache = { token: body.access_token, expires: Date.now() + (body.expires_in - 60) * 1000 };
-      return tokenCache.token;
+  for (let i = 0; i < attempts.length; i++) {
+    const at = (tokenAttemptIndex + i) % attempts.length;
+    const attempt = attempts[at];
+    try {
+      const res = await fetch(attempt.url, {
+        headers: { 'Metadata-Flavor': 'Google' },
+        signal: AbortSignal.timeout(3000)
+      });
+      if (res.ok) {
+        const body = await res.json();
+        tokenAttemptIndex = at;
+        // A minute of headroom, so a token never expires mid-request.
+        tokenCache = { token: body.access_token, expires: Date.now() + (body.expires_in - 60) * 1000 };
+        return tokenCache.token;
+      }
+      tried.push(`${attempt.label}:${res.status}`);
+    } catch (err) {
+      tried.push(`${attempt.label}:${err.name}`);
     }
-    tried.push(`${at === 0 ? 'scoped' : 'default'}:${res.status}`);
   }
-  throw new Error(`Could not get a service-account token (${tried.join(', ')}). Is this running on Cloud Run?`);
+  throw new Error(`No service-account token from the metadata server (${tried.join('; ')}). `
+    + 'Open /api/diag for the full reply from each attempt. The published-CSV route needs none of this.');
 }
 
 // tab undefined means "the first sheet, whatever it is named": a range with
@@ -335,6 +380,28 @@ functions.http('app', (req, res) => {
     res.set('WWW-Authenticate', 'Basic realm="Nocturnal Valley calibration", charset="UTF-8"');
     res.set('Cache-Control', 'no-store');
     res.status(401).send('Authentication required');
+    return;
+  }
+
+  // What the sheet plumbing is actually doing, in one place, so a failure
+  // can be read instead of guessed at. Nothing secret: statuses, error
+  // names, and which env vars are set -- never their values.
+  if (req.path === '/api/diag') {
+    probeToken()
+      .then((token) => {
+        res.set('Cache-Control', 'no-store');
+        res.json({
+          configured: {
+            SCHEDULE_SHEET_ID: SHEET_ID === undefined ? 'not set' : `set (${SHEET_ID.length} chars)`,
+            SCHEDULE_EVENTS_TAB: EVENTS_TAB === undefined ? 'not set (uses the first tab)' : EVENTS_TAB,
+            SCHEDULE_EVENTS_CSV_URL: EVENTS_CSV_URL === undefined ? 'not set' : 'set',
+            K_SERVICE: process.env.K_SERVICE === undefined ? 'not set — this is not Cloud Run' : process.env.K_SERVICE,
+            K_REVISION: process.env.K_REVISION === undefined ? 'not set' : process.env.K_REVISION
+          },
+          metadata: token
+        });
+      })
+      .catch((err) => res.status(500).json({ error: err.message }));
     return;
   }
 
