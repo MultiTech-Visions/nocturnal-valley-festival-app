@@ -87,7 +87,6 @@
       <div class="chips">
         <button id="sched-mine" class="chip mine" type="button">☆ My schedule</button>
         <button id="sched-add" class="chip" type="button">+ Add a set</button>
-        <button id="sched-sync" class="chip" type="button">⟳ Sync</button>
       </div>
       <p id="sched-sync-note" class="hint"></p>
       <div class="chips">
@@ -111,9 +110,20 @@
     </div>
 
     <details class="group" open>
+      <summary>My points <span id="mine-count" class="pt-meta"></span></summary>
+      <ul id="point-list" class="points side"></ul>
+    </details>
+
+    <details class="group">
+      <summary>Shared with me <span id="shared-count" class="pt-meta"></span></summary>
+      <ul id="shared-list" class="points side"></ul>
+    </details>
+
+    <details class="group">
       <summary>Treasure hunt <span id="hunt-progress" class="pt-meta"></span></summary>
       <div class="bar"><div id="hunt-bar" class="bar-fill"></div></div>
-      <p class="hint">Stand at the thing, press the button, and it drops a pin where you actually are. This is yours alone — nothing is uploaded and there is no leaderboard. Share your finds by QR and your camp gets them without walking it themselves.</p>
+      <p class="hint">We were never on site, so every pin in this app is a guess off the artwork. You're standing there — your phone isn't guessing. Every landmark you find replaces an estimate with a real fix, and your map gets sharper as you go.</p>
+      <p class="hint">This is yours alone: nothing uploads, there's no leaderboard, no server keeping score. Share your finds by QR and your whole camp gets an accurate map without walking it themselves.</p>
       <ul id="hunt-list" class="quests"></ul>
       <div class="badge-head">
         <h3>Badge case</h3>
@@ -123,15 +133,6 @@
       <p id="badge-detail" class="hint"></p>
     </details>
 
-    <details class="group" open>
-      <summary>My points <span id="mine-count" class="pt-meta"></span></summary>
-      <ul id="point-list" class="points side"></ul>
-    </details>
-
-    <details class="group">
-      <summary>Shared with me <span id="shared-count" class="pt-meta"></span></summary>
-      <ul id="shared-list" class="points side"></ul>
-    </details>
   </aside>
   <button id="sidebar-grip" class="sidebar-grip" type="button" aria-label="Open points list"></button>
 

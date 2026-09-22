@@ -537,24 +537,21 @@ const ScheduleUI = (() => {
   }
 
   // ---------- Cloud sync ----------
-  // Most phones here have no signal, so this is a button and never a
-  // background poll. The check pulls a version string only.
+  // No button. Most phones here have no signal, and a button that usually
+  // fails is worse than one that is not there. This checks quietly whenever
+  // there is a connection and pulls only when the published version has
+  // actually moved; the bell is what tells anyone something arrived.
   async function checkCloud(quiet) {
     try {
       const res = await fetch('/api/schedule?check=1', { cache: 'no-store' });
-      if (res.status === 503) {
-        if (!quiet) els.syncNote.textContent = 'No schedule sheet is set up for this festival yet.';
-        return;
-      }
+      if (res.status === 503) return;
       if (!res.ok) throw new Error(`server said ${res.status}`);
       const info = await res.json();
-      const known = cloud === null ? null : cloud.version;
-      els.sync.classList.toggle('has-update', info.version !== known);
-      els.syncNote.textContent = info.version === known
-        ? 'Up to date with the published schedule.'
-        : 'A newer schedule is published. Tap Sync to pull it.';
+      if (cloud !== null && info.version === cloud.version) return;
+      await pull();
     } catch (err) {
-      if (!quiet) els.syncNote.textContent = `Can't reach the schedule right now (${err.message}). Your copy still works.`;
+      // Offline is the normal state here, so a failed check is not news.
+      if (!quiet) els.syncNote.textContent = `Couldn't reach the schedule (${err.message}). Your copy still works.`;
     }
   }
 
@@ -665,27 +662,21 @@ const ScheduleUI = (() => {
     paintBell();
   }
 
-  async function syncNow() {
-    els.syncNote.textContent = 'Syncing…';
-    try {
-      const res = await fetch('/api/schedule', { cache: 'no-store' });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error);
-      }
-      const info = await res.json();
-      await Store.putCloudSchedule(info.version, info.at, info.schedule, info.announcements);
-      cloud = { version: info.version, at: info.at, schedule: info.schedule, announcements: info.announcements };
-      data = info.schedule;
-      announcements = info.announcements;
-      paintBell();
-      els.sync.classList.remove('has-update');
-      // Edits survive a sync by design: they sit on top, keyed by event id.
-      els.syncNote.textContent = `Synced. ${data.events.length} sets${editedCount() > 0 ? `, your ${editedCount()} change${editedCount() === 1 ? '' : 's'} kept on top` : ''}.`;
-      render();
-    } catch (err) {
-      els.syncNote.textContent = `Sync failed: ${err.message}`;
+  async function pull() {
+    const res = await fetch('/api/schedule', { cache: 'no-store' });
+    if (!res.ok) {
+      const body = await res.json();
+      throw new Error(body.error);
     }
+    const info = await res.json();
+    await Store.putCloudSchedule(info.version, info.at, info.schedule, info.announcements);
+    cloud = { version: info.version, at: info.at, schedule: info.schedule, announcements: info.announcements };
+    data = info.schedule;
+    announcements = info.announcements;
+    paintBell();
+    // Edits survive a pull by design: they sit on top, keyed by event id.
+    els.syncNote.textContent = `Updated from the organisers${editedCount() > 0 ? `, your ${editedCount()} change${editedCount() === 1 ? '' : 's'} kept on top` : ''}.`;
+    render();
   }
 
   async function refresh() {
@@ -714,7 +705,7 @@ const ScheduleUI = (() => {
   async function init() {
     for (const id of [
       'sched-days', 'sched-tracks', 'sched-friends', 'sched-friends-row', 'sched-grid', 'sched-tba',
-      'sched-mine', 'sched-add', 'sched-sync', 'sched-sync-note', 'bell', 'bell-count', 'news', 'news-list', 'news-note', 'news-close', 'sched-editor', 'sched-merge-bar', 'sched-merge-what', 'sched-merge-stop',
+      'sched-mine', 'sched-add', 'sched-sync-note', 'bell', 'bell-count', 'news', 'news-list', 'news-note', 'news-close', 'sched-editor', 'sched-merge-bar', 'sched-merge-what', 'sched-merge-stop',
       'sched-ed-title', 'sched-ed-note', 'sched-ed-day', 'sched-ed-track',
       'sched-ed-start-h', 'sched-ed-start-m', 'sched-ed-end-h', 'sched-ed-end-m',
       'sched-undo', 'sched-redo', 'sched-reset',
@@ -746,7 +737,6 @@ const ScheduleUI = (() => {
       render();
     });
     els.add.addEventListener('click', addEvent);
-    els.sync.addEventListener('click', syncNow);
     els.edSave.addEventListener('click', saveEditor);
     els.edClose.addEventListener('click', closeEditor);
     els.edCancel.addEventListener('click', toggleCancelled);

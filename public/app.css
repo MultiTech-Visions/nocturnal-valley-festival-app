@@ -451,7 +451,6 @@ body:not(.view-schedule) #schedule { display: none; }
   font-size: 10px; font-weight: 800; background: var(--ember); color: var(--deep);
 }
 .ev.cancelled .ev-flag { background: #d1242f; color: #fff; }
-.chip.has-update { background: var(--ember); border-color: var(--ember); color: var(--deep); }
 .merge-bar {
   display: flex; align-items: center; gap: 8px; justify-content: space-between;
   padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 700;
