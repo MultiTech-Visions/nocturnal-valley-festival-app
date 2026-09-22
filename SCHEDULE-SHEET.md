@@ -21,7 +21,29 @@ in any order, extra columns ignored:
 Trailing blank cells are fine — a row can stop after `title` and the rest
 reads as "to be announced".
 
-## Setup — published CSV (start here)
+## Setup — service-account key (private sheet, works anywhere)
+
+Use this when the platform will not hand the server a token. The server signs
+its own assertion with the key and trades it for one, so no metadata server is
+involved and nothing is published.
+
+1. `gcloud services enable sheets.googleapis.com`
+2. Make a key for a service account:
+   ```
+   gcloud iam service-accounts create sheets-reader
+   gcloud iam service-accounts keys create key.json \
+     --iam-account=sheets-reader@PROJECT_ID.iam.gserviceaccount.com
+   ```
+3. Share the sheet with `sheets-reader@PROJECT_ID.iam.gserviceaccount.com` as
+   **Viewer**.
+4. Put the whole contents of `key.json` in `SCHEDULE_SA_KEY`. Base64 is
+   accepted too (`base64 -w0 key.json`) if the newlines give the console
+   trouble. Secret Manager is a better home for it than a plain env var.
+
+`SCHEDULE_SA_KEY` takes precedence over the metadata server, so setting it
+ends the question of whether the platform will cooperate.
+
+## Setup — published CSV (no credentials at all)
 
 Fewest moving parts, and the one to use unless the sheet holds something you
 would not put on a public page. The URL is readable by anyone who has it; a

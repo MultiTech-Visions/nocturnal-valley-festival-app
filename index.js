@@ -140,10 +140,78 @@ async function probeToken() {
   return results;
 }
 
+// A service-account key, straight from config. This needs no metadata
+// server, no Cloud Run, and no publishing: the server signs its own
+// assertion with the key and trades it for an access token. It is the route
+// that works when the platform will not hand one over.
+const SA_KEY_RAW = process.env.SCHEDULE_SA_KEY;
+const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+function serviceAccountKey() {
+  if (SA_KEY_RAW === undefined) return null;
+  let key;
+  try {
+    // Pasted into a console, a key often arrives base64'd to survive the
+    // newlines in its private key. Accept either form.
+    const text = SA_KEY_RAW.trim().startsWith('{')
+      ? SA_KEY_RAW
+      : Buffer.from(SA_KEY_RAW, 'base64').toString('utf8');
+    key = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`SCHEDULE_SA_KEY is not a service-account JSON key: ${err.message}`);
+  }
+  if (typeof key.client_email !== 'string' || typeof key.private_key !== 'string') {
+    throw new Error('SCHEDULE_SA_KEY is missing client_email or private_key. Paste the whole JSON key file.');
+  }
+  return key;
+}
+
+const b64url = (buf) => Buffer.from(buf).toString('base64')
+  .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+// The JWT bearer flow, by hand. Three base64url segments, the third an
+// RS256 signature over the first two, traded at Google's token endpoint.
+async function tokenFromKey(key) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claim = b64url(JSON.stringify({
+    iss: key.client_email,
+    scope: SHEETS_SCOPE,
+    aud: OAUTH_TOKEN_URL,
+    iat: now,
+    exp: now + 3600
+  }));
+  const signature = b64url(
+    crypto.createSign('RSA-SHA256').update(`${header}.${claim}`).sign(key.private_key)
+  );
+
+  const res = await fetch(OAUTH_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: `${header}.${claim}.${signature}`
+    })
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Google refused the key (${body.error}: ${body.error_description}). `
+      + 'Check the key is current and the Sheets API is enabled for its project.');
+  }
+  return { token: body.access_token, expires: Date.now() + (body.expires_in - 60) * 1000 };
+}
+
 let tokenAttemptIndex = 0;
 
 async function accessToken() {
   if (tokenCache !== null && Date.now() < tokenCache.expires) return tokenCache.token;
+
+  // A key in config beats asking the platform, because it cannot be refused.
+  const key = serviceAccountKey();
+  if (key !== null) {
+    tokenCache = await tokenFromKey(key);
+    return tokenCache.token;
+  }
 
   const attempts = tokenAttempts();
   const tried = [];
@@ -168,7 +236,7 @@ async function accessToken() {
     }
   }
   throw new Error(`No service-account token from the metadata server (${tried.join('; ')}). `
-    + 'Open /api/diag for the full reply from each attempt. The published-CSV route needs none of this.');
+    + 'Set SCHEDULE_SA_KEY to a service-account JSON key and none of this matters. /api/diag shows each attempt.');
 }
 
 // tab undefined means "the first sheet, whatever it is named": a range with
@@ -387,18 +455,31 @@ functions.http('app', (req, res) => {
   // can be read instead of guessed at. Nothing secret: statuses, error
   // names, and which env vars are set -- never their values.
   if (req.path === '/api/diag') {
-    probeToken()
-      .then((token) => {
+    // With a key configured, the metadata server is irrelevant -- report
+    // whether the key itself can mint a token instead.
+    const keyProbe = async () => {
+      if (SA_KEY_RAW === undefined) return 'SCHEDULE_SA_KEY not set';
+      try {
+        const got = await tokenFromKey(serviceAccountKey());
+        return `works — token of ${got.token.length} chars`;
+      } catch (err) {
+        return `failed — ${err.message}`;
+      }
+    };
+    Promise.all([probeToken(), keyProbe()])
+      .then(([metadata, serviceAccountKeyResult]) => {
         res.set('Cache-Control', 'no-store');
         res.json({
           configured: {
             SCHEDULE_SHEET_ID: SHEET_ID === undefined ? 'not set' : `set (${SHEET_ID.length} chars)`,
             SCHEDULE_EVENTS_TAB: EVENTS_TAB === undefined ? 'not set (uses the first tab)' : EVENTS_TAB,
             SCHEDULE_EVENTS_CSV_URL: EVENTS_CSV_URL === undefined ? 'not set' : 'set',
+            SCHEDULE_SA_KEY: SA_KEY_RAW === undefined ? 'not set' : `set (${SA_KEY_RAW.length} chars)`,
             K_SERVICE: process.env.K_SERVICE === undefined ? 'not set — this is not Cloud Run' : process.env.K_SERVICE,
             K_REVISION: process.env.K_REVISION === undefined ? 'not set' : process.env.K_REVISION
           },
-          metadata: token
+          serviceAccountKey: serviceAccountKeyResult,
+          metadata
         });
       })
       .catch((err) => res.status(500).json({ error: err.message }));
