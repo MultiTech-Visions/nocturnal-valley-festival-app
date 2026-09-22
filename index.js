@@ -96,19 +96,34 @@ let tokenCache = null;
 // point: no credentials are stored, shipped, or rotatable-by-mistake.
 // spreadsheets.readonly is asked for explicitly -- the default
 // cloud-platform token is not a scope the Sheets API accepts.
-const METADATA_TOKEN_URL = 'http://metadata.google.internal/computeMetadata/v1/instance/service-account/default/token'
-  + '?scopes=https://www.googleapis.com/auth/spreadsheets.readonly';
+const METADATA_TOKEN = 'http://metadata.google.internal/computeMetadata/v1/instance/service-account/default/token';
+// Asking for a narrower scope is preferable, but Cloud Run's metadata server
+// answers 404 to the ?scopes= form that Compute Engine accepts. So: try the
+// narrow one, fall back to the service's own default token, and remember
+// which of the two this platform actually answers.
+const TOKEN_URLS = [
+  `${METADATA_TOKEN}?scopes=https://www.googleapis.com/auth/spreadsheets.readonly`,
+  METADATA_TOKEN
+];
+let tokenUrlIndex = 0;
 
 async function accessToken() {
   if (tokenCache !== null && Date.now() < tokenCache.expires) return tokenCache.token;
-  const res = await fetch(METADATA_TOKEN_URL, { headers: { 'Metadata-Flavor': 'Google' } });
-  if (!res.ok) {
-    throw new Error(`Could not get a service-account token (${res.status}). This path only works on Cloud Run.`);
+
+  const tried = [];
+  for (let i = 0; i < TOKEN_URLS.length; i++) {
+    const at = (tokenUrlIndex + i) % TOKEN_URLS.length;
+    const res = await fetch(TOKEN_URLS[at], { headers: { 'Metadata-Flavor': 'Google' } });
+    if (res.ok) {
+      const body = await res.json();
+      tokenUrlIndex = at;
+      // A minute of headroom, so a token never expires mid-request.
+      tokenCache = { token: body.access_token, expires: Date.now() + (body.expires_in - 60) * 1000 };
+      return tokenCache.token;
+    }
+    tried.push(`${at === 0 ? 'scoped' : 'default'}:${res.status}`);
   }
-  const body = await res.json();
-  // A minute of headroom, so a token never expires mid-request.
-  tokenCache = { token: body.access_token, expires: Date.now() + (body.expires_in - 60) * 1000 };
-  return tokenCache.token;
+  throw new Error(`Could not get a service-account token (${tried.join(', ')}). Is this running on Cloud Run?`);
 }
 
 // tab undefined means "the first sheet, whatever it is named": a range with
@@ -119,7 +134,11 @@ async function fetchSheetTab(tab) {
     + `/values/${encodeURIComponent(range)}?majorDimension=ROWS`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${await accessToken()}` } });
   if (res.status === 403) {
-    throw new Error('The service account cannot read this sheet. Share the sheet with it as Viewer, and enable the Sheets API.');
+    const body = (await res.text()).slice(0, 300);
+    const scopeProblem = body.includes('insufficient') || body.includes('scope');
+    throw new Error(scopeProblem
+      ? 'The token this service can mint is not accepted by the Sheets API. Grant the service account the Sheets scope, or use the published-CSV route instead.'
+      : 'The service account cannot read this sheet. Share the sheet with it as Viewer, and enable the Sheets API.');
   }
   if (res.status === 404) {
     const err = new Error(tab === undefined ? `No sheet with id ${SHEET_ID}.` : `No sheet ${SHEET_ID} with a tab named "${tab}".`);

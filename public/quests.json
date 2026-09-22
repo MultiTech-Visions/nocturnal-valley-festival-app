@@ -1,5 +1,5 @@
 {
-  "_readme": "Landmarks drawn on the artwork that have no GPS behind them. Finding one captures the finder's coordinates, which is how the map gets more accurate. Add a row and it appears in the Hunt tab; ids must stay stable because found records are keyed to them. 'hint' is what to look for, not where it is -- that is the point.",
+  "_readme": "Landmarks drawn on the artwork that have no GPS behind them. A quest with \"repeat\": true can be recorded more than once -- there is more than one water station -- and the extra records are keyed questId#2, #3 and so on. Finding one captures the finder's coordinates, which is how the map gets more accurate. Add a row and it appears in the Hunt tab; ids must stay stable because found records are keyed to them. 'hint' is what to look for, not where it is -- that is the point.",
   "categories": [
     { "id": "landmarks", "name": "Landmarks", "color": "#f6d31b" },
     { "id": "services", "name": "Services", "color": "#35a7ff" },
@@ -13,18 +13,18 @@
     { "id": "q-star-no-9", "name": "Star No. 9", "category": "landmarks", "icon": "⭐", "hint": "Marked on the map between the campgrounds." },
     { "id": "q-cave-560", "name": "Cave 560", "category": "landmarks", "icon": "🕳️", "hint": "A cave mouth with a number on it." },
     { "id": "q-rock-climbing", "name": "Rock Climbing", "category": "landmarks", "icon": "🧗", "hint": "Something worth climbing." },
-    { "id": "q-renegade", "name": "A Renegade Stage", "category": "landmarks", "icon": "🎛️", "hint": "Unofficial, unannounced, moves around. Any one counts." },
+    { "id": "q-renegade", "repeat": true, "name": "A Renegade Stage", "category": "landmarks", "icon": "🎛️", "hint": "Unofficial, unannounced, moves around. Any one counts." },
 
     { "id": "q-main-entrance", "name": "Main Entrance", "category": "services", "icon": "🚪", "hint": "Where you came in." },
     { "id": "q-box-office", "name": "Box Office", "category": "services", "icon": "🎟️", "hint": "Wristbands and will-call." },
     { "id": "q-medical", "name": "Medical", "category": "services", "icon": "🚑", "hint": "Red cross. Worth knowing before you need it." },
     { "id": "q-lost-found", "name": "Lost & Found", "category": "services", "icon": "❓", "hint": "Where your phone ends up." },
     { "id": "q-golf-cart", "name": "Golf Cart Pickup", "category": "services", "icon": "🛺", "hint": "The ride for when the hill wins." },
-    { "id": "q-parking", "name": "Parking", "category": "services", "icon": "🅿️", "hint": "There is more than one. Any counts." },
+    { "id": "q-parking", "repeat": true, "name": "Parking", "category": "services", "icon": "🅿️", "hint": "There is more than one. Any counts." },
 
-    { "id": "q-water-station", "name": "Water Station", "category": "camp", "icon": "💧", "hint": "Fill up. There are several." },
-    { "id": "q-showers", "name": "Showers", "category": "camp", "icon": "🚿", "hint": "Day three's best discovery." },
-    { "id": "q-restrooms", "name": "Restrooms", "category": "camp", "icon": "🚻", "hint": "Any bank of them counts." },
+    { "id": "q-water-station", "repeat": true, "name": "Water Station", "category": "camp", "icon": "💧", "hint": "Fill up. There are several." },
+    { "id": "q-showers", "repeat": true, "name": "Showers", "category": "camp", "icon": "🚿", "hint": "Day three's best discovery." },
+    { "id": "q-restrooms", "repeat": true, "name": "Restrooms", "category": "camp", "icon": "🚻", "hint": "Any bank of them counts." },
     { "id": "q-swimming-hole", "name": "Swimming Hole", "category": "camp", "icon": "🏊", "hint": "Water you can get into." },
     { "id": "q-hyper-boys-hole", "name": "Hyper Boys Hole", "category": "camp", "icon": "😎", "hint": "Named on the map up near Stargazer." },
     { "id": "q-kid-camping", "name": "Kid Camping", "category": "camp", "icon": "⛺", "hint": "The quiet corner." },
@@ -34,7 +34,6 @@
     { "id": "q-nocturnal-bar", "name": "Nocturnal Bar", "category": "vendors", "icon": "🍺", "hint": "Near the Nocturnal Stage." },
     { "id": "q-vendor-village", "name": "Vendor Village", "category": "vendors", "icon": "🎪", "hint": "The row of stalls." },
     { "id": "q-merchandise", "name": "Merchandise", "category": "vendors", "icon": "👕", "hint": "The shirt you'll regret not buying." },
-    { "id": "q-general-store", "name": "General Store", "category": "vendors", "icon": "🏪", "hint": "Ice, batteries, salvation." },
-    { "id": "q-food-vendor", "name": "A Food Vendor", "category": "vendors", "icon": "🍴", "hint": "Any one counts. Pick a good one." }
+    { "id": "q-general-store", "name": "General Store", "category": "vendors", "icon": "🏪", "hint": "Ice, batteries, salvation." }
   ]
 }

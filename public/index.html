@@ -38,27 +38,9 @@
   <nav class="tabs">
     <button id="tab-map" class="tab on" type="button">Map</button>
     <button id="tab-schedule" class="tab" type="button">Schedule</button>
-    <button id="tab-hunt" class="tab" type="button">Hunt</button>
   </nav>
 
   <main id="map" class="viewer"></main>
-
-  <section id="hunt" class="hunt">
-    <div class="hunt-head">
-      <h2>Treasure hunt</h2>
-      <p id="hunt-progress" class="pt-meta"></p>
-      <div class="bar"><div id="hunt-bar" class="bar-fill"></div></div>
-      <p class="hint">Stand at the thing, press the button. Your phone's own fix is better than the guess the map shipped with — every find makes it sharper for everyone you share with.</p>
-    </div>
-    <ul id="hunt-list" class="quests"></ul>
-
-    <div class="badge-head">
-      <h3>Badge case</h3>
-      <p id="badge-count" class="pt-meta"></p>
-    </div>
-    <div id="badge-case" class="badge-case"></div>
-    <p id="badge-detail" class="hint"></p>
-  </section>
 
   <div id="badge-toast" class="badge-toast" hidden>
     <canvas id="badge-toast-art" width="72" height="72"></canvas>
@@ -108,6 +90,11 @@
         <button id="sched-sync" class="chip" type="button">⟳ Sync</button>
       </div>
       <p id="sched-sync-note" class="hint"></p>
+      <div class="chips">
+        <button id="sched-undo" class="chip" type="button">↶ Undo</button>
+        <button id="sched-redo" class="chip" type="button">↷ Redo</button>
+        <button id="sched-reset" class="chip" type="button">Reset my edits</button>
+      </div>
       <div id="sched-merge-bar" class="merge-bar" hidden>
         <span id="sched-merge-what"></span>
         <button id="sched-merge-stop" class="btn small" type="button">Cancel</button>
@@ -117,12 +104,34 @@
     <div id="sched-tba" class="tba"></div>
   </section>
 
-  <aside id="sidebar" class="sidebar" aria-label="Saved points">
+  <aside id="sidebar" class="sidebar" aria-label="Points and hunt">
     <div class="sidebar-head">
-      <h2>Points</h2>
+      <h2>On the map</h2>
       <button id="sidebar-close" class="btn small" type="button">Hide</button>
     </div>
-    <ul id="point-list" class="points side"></ul>
+
+    <details class="group" open>
+      <summary>Treasure hunt <span id="hunt-progress" class="pt-meta"></span></summary>
+      <div class="bar"><div id="hunt-bar" class="bar-fill"></div></div>
+      <p class="hint">Stand at the thing, press the button, and it drops a pin where you actually are. This is yours alone — nothing is uploaded and there is no leaderboard. Share your finds by QR and your camp gets them without walking it themselves.</p>
+      <ul id="hunt-list" class="quests"></ul>
+      <div class="badge-head">
+        <h3>Badge case</h3>
+        <p id="badge-count" class="pt-meta"></p>
+      </div>
+      <div id="badge-case" class="badge-case"></div>
+      <p id="badge-detail" class="hint"></p>
+    </details>
+
+    <details class="group" open>
+      <summary>My points <span id="mine-count" class="pt-meta"></span></summary>
+      <ul id="point-list" class="points side"></ul>
+    </details>
+
+    <details class="group">
+      <summary>Shared with me <span id="shared-count" class="pt-meta"></span></summary>
+      <ul id="shared-list" class="points side"></ul>
+    </details>
   </aside>
   <button id="sidebar-grip" class="sidebar-grip" type="button" aria-label="Open points list"></button>
 
@@ -233,10 +242,14 @@
       <select id="sched-ed-day" class="field"></select>
       <select id="sched-ed-track" class="field"></select>
     </div>
-    <div class="cal-row">
-      <input id="sched-ed-start" class="field time" type="text" inputmode="numeric" placeholder="Start 21:30" autocomplete="off">
-      <input id="sched-ed-end" class="field time" type="text" inputmode="numeric" placeholder="End 23:00" autocomplete="off">
-    </div>
+    <label class="time-row"><span>Starts</span>
+      <select id="sched-ed-start-h" class="field time"></select>
+      <select id="sched-ed-start-m" class="field time"></select>
+    </label>
+    <label class="time-row"><span>Ends</span>
+      <select id="sched-ed-end-h" class="field time"></select>
+      <select id="sched-ed-end-m" class="field time"></select>
+    </label>
     <input id="sched-ed-note" class="field" type="text" placeholder="Note (optional)" autocomplete="off">
     <p id="sched-ed-hint" class="hint"></p>
     <div class="cal-row">

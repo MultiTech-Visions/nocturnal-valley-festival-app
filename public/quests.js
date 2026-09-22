@@ -26,7 +26,26 @@ const QuestsUI = (() => {
 
   const questById = (id) => data.quests.find((q) => q.id === id);
   const categoryById = (id) => data.categories.find((c) => c.id === id);
-  const foundCount = () => finds.size;
+
+  // There is more than one water station, so a repeatable quest stores extra
+  // records under questId#2, #3 and so on. The part before the # is always
+  // the quest it belongs to.
+  const baseId = (key) => key.split('#')[0];
+  const findsFor = (questId) => [...finds.values()].filter((f) => baseId(f.questId) === questId);
+  const distinctFound = () => new Set([...finds.keys()].map(baseId));
+  const foundCount = () => distinctFound().size;
+
+  function nextKey(questId) {
+    const mine = findsFor(questId);
+    if (mine.length === 0) return questId;
+    let n = 2;
+    while (finds.has(`${questId}#${n}`)) n++;
+    return `${questId}#${n}`;
+  }
+
+  // While a fix is being waited on the row has to look busy, or pressing the
+  // button reads as nothing happening and people press it again.
+  let busy = new Set();
 
   // ---------- The list ----------
   function render() {
@@ -45,36 +64,90 @@ const QuestsUI = (() => {
       els.list.appendChild(head);
 
       for (const q of mine) {
-        const find = finds.get(q.id);
+        const mineFinds = findsFor(q.id);
+        const got = mineFinds.length > 0;
+        const working = busy.has(q.id);
         const li = document.createElement('li');
-        li.className = `quest${find === undefined ? '' : ' done'}`;
+        li.className = `quest${got ? ' done' : ''}${working ? ' busy' : ''}${q.repeat === true ? ' repeatable' : ''}`;
+        li.dataset.quest = q.id;
         li.style.setProperty('--cat', cat.color);
 
         const icon = document.createElement('span');
         icon.className = 'quest-icon';
-        icon.textContent = q.icon;
+        icon.textContent = working ? '◌' : q.icon;
 
         const text = document.createElement('div');
         text.className = 'quest-text';
         const name = document.createElement('strong');
-        name.textContent = q.name;
+        name.textContent = q.name + (mineFinds.length > 1 ? ` ×${mineFinds.length}` : '');
         const hint = document.createElement('span');
         hint.className = 'pt-meta';
-        hint.textContent = find === undefined
-          ? q.hint
-          : `Found ${new Date(find.foundAt).toLocaleDateString()} · ±${Math.round(find.accuracy)} m${find.px === null ? '' : ' · on the map'}`;
+        if (working) hint.textContent = 'Getting your position…';
+        else if (!got) hint.textContent = q.hint;
+        else {
+          const first = mineFinds[0];
+          const placed = mineFinds.filter((f) => f.px !== null).length;
+          hint.textContent = `Found ${new Date(first.foundAt).toLocaleDateString()} · ±${Math.round(first.accuracy)} m${placed > 0 ? ` · ${placed} on the map` : ''}`;
+        }
         text.append(name, hint);
 
-        const go = document.createElement('button');
-        go.type = 'button';
-        go.className = `btn small${find === undefined ? ' primary' : ''}`;
-        go.textContent = find === undefined ? 'I found it' : 'Undo';
-        go.addEventListener('click', () => (find === undefined ? claim(q) : unclaim(q)));
+        // The photo taken at the moment of finding, small, tap to enlarge.
+        const withPhoto = mineFinds.find((f) => f.photoId !== undefined && f.photoId !== null);
+        if (withPhoto !== undefined) {
+          const thumb = document.createElement('img');
+          thumb.className = 'quest-thumb';
+          thumb.alt = '';
+          Store.getPhoto(withPhoto.photoId).then((blob) => {
+            if (blob !== null) thumb.src = URL.createObjectURL(blob);
+          });
+          thumb.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (thumb.src === '') return;
+            els.lightboxImg.src = thumb.src;
+            els.lightbox.hidden = false;
+          });
+          text.appendChild(thumb);
+        }
 
-        li.append(icon, text, go);
+        const buttons = document.createElement('div');
+        buttons.className = 'quest-actions';
+        if (!got) {
+          buttons.appendChild(actionButton('I found it', 'primary', working, () => claim(q), 'Finding…'));
+        } else {
+          if (q.repeat === true) {
+            buttons.appendChild(actionButton('Record another', '', working, () => claim(q), 'Finding…'));
+          }
+          buttons.appendChild(actionButton('Undo', '', working, () => unclaim(q)));
+        }
+
+        li.append(icon, text, buttons);
         els.list.appendChild(li);
       }
     }
+  }
+
+  // Row-level state without rebuilding the row.
+  function markBusy(questId, on) {
+    const li = els.list.querySelector(`[data-quest="${questId}"]`);
+    if (li === null) return;
+    li.classList.toggle('busy', on);
+    li.querySelector('.quest-icon').textContent = on ? '◌' : questById(questId).icon;
+    if (on) li.querySelector('.quest-text .pt-meta').textContent = 'Getting your position…';
+    for (const b of li.querySelectorAll('button')) {
+      b.disabled = on;
+      if (on && b.dataset.busyLabel !== undefined) b.textContent = b.dataset.busyLabel;
+    }
+  }
+
+  function actionButton(label, extra, disabled, onClick, busyLabel) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `btn small ${extra}`.trim();
+    b.textContent = disabled && busyLabel !== undefined ? busyLabel : label;
+    b.disabled = disabled;
+    if (busyLabel !== undefined) b.dataset.busyLabel = busyLabel;
+    b.addEventListener('click', onClick);
+    return b;
   }
 
   // ---------- Finding ----------
@@ -91,6 +164,13 @@ const QuestsUI = (() => {
   }
 
   async function claim(quest) {
+    // Mark the row busy in place rather than re-rendering the list. A full
+    // render inside a click handler destroys the very button being pressed,
+    // which on a touch screen swallows the press -- the reason finding
+    // something used to take two taps.
+    busy.add(quest.id);
+    markBusy(quest.id, true);
+
     els.celebrateName.textContent = quest.name;
     els.celebrateIcon.textContent = quest.icon;
     els.celebrateWhere.textContent = 'Pinning where you are…';
@@ -115,7 +195,7 @@ const QuestsUI = (() => {
         createdAt: Date.now()
       };
       const find = {
-        questId: quest.id,
+        questId: nextKey(quest.id),
         foundAt: Date.now(),
         lat: latitude,
         lng: longitude,
@@ -125,9 +205,11 @@ const QuestsUI = (() => {
         // what turns a find into a calibration pair.
         px: null
       };
+      find.photoId = null;
       await Store.putFind(find, point);
-      finds.set(quest.id, find);
+      finds.set(find.questId, find);
       pending = { quest, find, point };
+      busy.delete(quest.id);
 
       els.celebrateWhere.textContent = `Pinned to within ${Math.round(accuracy)} m. ${foundCount()} of ${data.quests.length} found.`;
       els.celebratePlace.hidden = false;
@@ -137,10 +219,11 @@ const QuestsUI = (() => {
     } catch (err) {
       // No fix is not a failed find: record it, say the coordinates are
       // missing, and let them add the pin later rather than losing the moment.
-      const find = { questId: quest.id, foundAt: Date.now(), lat: null, lng: null, accuracy: 0, pointId: null, px: null };
+      const find = { questId: nextKey(quest.id), foundAt: Date.now(), lat: null, lng: null, accuracy: 0, pointId: null, px: null, photoId: null };
       await Store.putFind(find, null);
-      finds.set(quest.id, find);
+      finds.set(find.questId, find);
       pending = { quest, find, point: null };
+      busy.delete(quest.id);
       els.celebrateWhere.textContent = `Counted, but no GPS right now (${err.message}), so no pin was dropped.`;
       render();
       await score();
@@ -148,16 +231,21 @@ const QuestsUI = (() => {
     }
   }
 
+  // Removes the most recent record of that quest, so undoing a mistaken
+  // "record another" does not wipe the first one too.
   async function unclaim(quest) {
-    const find = finds.get(quest.id);
+    const mine = findsFor(quest.id).sort((a, b) => b.foundAt - a.foundAt);
+    if (mine.length === 0) return;
+    const find = mine[0];
     if (find.pointId !== null) {
       const state = await Store.load();
       const point = state.points.find((p) => p.id === find.pointId);
       if (point !== undefined) await Store.deletePoint(point);
     }
-    await Store.deleteFind(quest.id);
-    finds.delete(quest.id);
+    await Store.deleteFind(find.questId);
+    finds.delete(find.questId);
     render();
+    await score();
     if (onChange !== null) onChange();
   }
 
@@ -169,9 +257,13 @@ const QuestsUI = (() => {
     await Store.putPhoto(photoId, blob);
     pending.point.photoId = photoId;
     await Store.putPoint(pending.point);
+    pending.find.photoId = photoId;
+    await Store.putFind(pending.find, null);
+    finds.set(pending.find.questId, pending.find);
     els.celebratePhotoName.textContent = 'Saved to this phone, on the pin.';
     els.celebrateShot.src = URL.createObjectURL(blob);
     els.celebrateShot.hidden = false;
+    render();
     await Badges.bump('photos');
     await score();
     if (onChange !== null) onChange();
@@ -234,7 +326,7 @@ const QuestsUI = (() => {
     const state = await Store.load();
     await Badges.evaluate({
       finds: [...finds.values()],
-      foundIds: new Set(finds.keys()),
+      foundIds: distinctFound(),
       quests: data.quests,
       questTotal: data.quests.length,
       favorites: state.favorites,
@@ -283,9 +375,15 @@ const QuestsUI = (() => {
       if (file === undefined) return;
       await attachPhoto(file);
     });
-    els.celebrateDone.addEventListener('click', () => { els.celebrate.hidden = true; });
+    els.celebrateDone.addEventListener('click', () => {
+      els.celebrate.hidden = true;
+      // Anything earned during the celebration shows now the way is clear.
+      Badges.flush();
+    });
     els.celebratePlace.addEventListener('click', startPlacing);
     els.placeStop.addEventListener('click', stopPlacing);
+    els.lightbox = document.getElementById('lightbox');
+    els.lightboxImg = document.getElementById('lightbox-img');
 
     await refresh();
   }

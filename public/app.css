@@ -233,14 +233,6 @@ body.cal { display: grid; grid-template-columns: 1fr 340px; height: 100%; }
 .viewer > div.pin { pointer-events: auto; z-index: 2; }
 
 /* ---------- Treasure hunt ---------- */
-body.view-hunt #map, body.view-hunt .sidebar, body.view-hunt .sidebar-grip, body.view-hunt #compass { display: none; }
-body.view-hunt #gps-toggle, body.view-hunt #recenter, body.view-hunt #drop { display: none; }
-body:not(.view-hunt) #hunt { display: none; }
-
-.hunt { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 12px; }
-.hunt-head { position: sticky; top: 0; z-index: 3; padding: 10px 0 8px; background: var(--deep); }
-.hunt-head h2 { margin: 0 0 2px; font-size: 16px; }
-.hunt-head .hint { margin: 6px 0 0; }
 .bar { height: 8px; border-radius: 999px; background: var(--night); overflow: hidden; margin-top: 6px; }
 .bar-fill { height: 100%; background: var(--owl); transition: width 0.3s ease; }
 .quests { list-style: none; margin: 0; padding: 0; }
@@ -254,10 +246,20 @@ body:not(.view-hunt) #hunt { display: none; }
   margin-bottom: 6px;
 }
 .quest.done { opacity: 0.72; }
-.quest.done .quest-text strong { text-decoration: line-through; }
+/* A repeatable is never finished -- there is always another water station --
+   so it keeps its name upright. */
+.quest.done:not(.repeatable) .quest-text strong { text-decoration: line-through; }
 .quest-icon { font-size: 22px; flex: none; }
 .quest-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .quest-text .pt-meta { font-size: 11px; }
+.quest-actions { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.quest-actions .btn { touch-action: manipulation; }
+.quest-thumb { width: 48px; height: 36px; object-fit: cover; border-radius: 6px; margin-top: 4px; cursor: zoom-in; }
+/* Busy: the press registered and a fix is being waited on. */
+.quest.busy { border-left-color: var(--creek); }
+.quest.busy .quest-icon { animation: spin 1s linear infinite; color: var(--creek); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .quest.busy .quest-icon { animation: none; } }
 .place-bar { position: fixed; left: 12px; right: 12px; bottom: 96px; z-index: 850; }
 
 .celebrate {
@@ -455,14 +457,17 @@ body:not(.view-schedule) #schedule { display: none; }
   padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 700;
   background: var(--ember); color: var(--deep);
 }
+.time-row { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.time-row > span { width: 52px; flex: none; }
 .field.time { flex: 1; min-width: 0; }
+.chip:disabled { opacity: 0.35; cursor: default; }
 select.field { appearance: none; }
 #sched-sync-note { margin: 0; }
 .ev { cursor: pointer; }
 
 /* ---------- Sidebar ---------- */
 .sidebar {
-  position: fixed; z-index: 800; top: 0; right: 0; bottom: 0; width: min(280px, 80vw);
+  position: fixed; z-index: 800; top: 0; right: 0; bottom: 0; width: min(320px, 86vw);
   display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px max(env(safe-area-inset-bottom, 0px), 14px);
   background: var(--night); border-left: 2px solid #4a3378;
@@ -470,6 +475,19 @@ select.field { appearance: none; }
 }
 .sidebar.open { transform: none; }
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.group { border-top: 1px solid #2c1b52; padding-top: 6px; }
+.group > summary {
+  cursor: pointer; padding: 6px 2px; font-size: 14px; font-weight: 800;
+  display: flex; align-items: baseline; gap: 8px; list-style: none;
+}
+.group > summary::-webkit-details-marker { display: none; }
+/* A disclosure triangle drawn rather than inherited, so it matches the rest
+   and points the right way in both states. */
+.group > summary::before {
+  content: '▸'; color: var(--owl); transition: transform 0.15s ease; display: inline-block;
+}
+.group[open] > summary::before { transform: rotate(90deg); }
+.group > summary .pt-meta { margin-left: auto; font-weight: 700; }
 .sidebar-head h2 { margin: 0; font-size: 16px; }
 .points.side li { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid #2c1b52; }
 .points.side .pt-name { font-weight: 700; flex: 1; }
@@ -483,9 +501,11 @@ select.field { appearance: none; }
 }
 @media (min-width: 900px) {
   /* Body padding, not a margin on the map: the viewer sizes itself from its
-     own box and its ResizeObserver refits when that box changes. */
-  body.app { padding-right: 280px; }
-  .sidebar { transform: none; }
+     own box and its ResizeObserver refits when that box changes. Only on the
+     map view -- the sidebar is hidden elsewhere, and padding for a panel that
+     is not there leaves the page shoved sideways. */
+  body.app:not(.view-schedule) { padding-right: 320px; }
+  body.app:not(.view-schedule) .sidebar { transform: none; }
   .sidebar-grip { display: none; }
 }
 

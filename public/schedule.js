@@ -69,17 +69,80 @@ const ScheduleUI = (() => {
 
   const editedCount = () => overrides.size;
 
+  // ---------- Undo / redo ----------
+  // Whole-snapshot history rather than per-field diffs. The override set is a
+  // handful of small patches, so copying it is cheap, and it means every kind
+  // of edit -- retime, merge, cancel, add -- undoes the same way. A merge in
+  // particular touches two events at once, and undoing half of one is how an
+  // act goes missing.
+  const past = [];
+  const future = [];
+  const snapshot = () => [...overrides.values()].map((o) => ({ ...o, patch: { ...o.patch } }));
+
+  function remember() {
+    past.push(snapshot());
+    if (past.length > 30) past.shift();
+    future.length = 0;
+    paintHistory();
+  }
+
+  async function restore(list) {
+    // The store is the source of truth, so it is rewritten to match, not
+    // patched alongside.
+    for (const eventId of overrides.keys()) await Store.deleteOverride(eventId);
+    overrides = new Map(list.map((o) => [o.eventId, o]));
+    await Store.putOverrides(list);
+    render();
+    paintHistory();
+    QuestsUI.score();
+  }
+
+  async function undo() {
+    if (past.length === 0) return;
+    future.push(snapshot());
+    await restore(past.pop());
+  }
+
+  async function redo() {
+    if (future.length === 0) return;
+    past.push(snapshot());
+    await restore(future.pop());
+  }
+
+  async function resetEdits() {
+    if (overrides.size === 0) return;
+    remember();
+    await restore([]);
+    els.syncNote.textContent = 'All your schedule edits are cleared. Undo still has them.';
+  }
+
+  function paintHistory() {
+    els.undo.disabled = past.length === 0;
+    els.redo.disabled = future.length === 0;
+    els.reset.disabled = overrides.size === 0;
+  }
+
   async function setOverride(eventId, patch) {
     const existing = overrides.get(eventId);
     const merged = { eventId, patch: { ...(existing === undefined ? {} : existing.patch), ...patch }, updatedAt: Date.now() };
     overrides.set(eventId, merged);
     await Store.putOverride(merged);
+    paintHistory();
     QuestsUI.score();
   }
 
+  // Clearing a merged act's override has to release whatever it absorbed,
+  // or the absorbed one stays hidden with nothing left pointing at it --
+  // which is an act quietly vanishing from the schedule.
   async function clearOverride(eventId) {
+    const release = [...overrides.values()].filter((o) => o.patch.mergedInto === eventId);
     overrides.delete(eventId);
     await Store.deleteOverride(eventId);
+    for (const o of release) {
+      overrides.delete(o.eventId);
+      await Store.deleteOverride(o.eventId);
+    }
+    paintHistory();
   }
 
   // Who else is going, for the chips on a set.
@@ -313,8 +376,7 @@ const ScheduleUI = (() => {
     editing = ev;
     els.edTitle.value = ev.title;
     els.edNote.value = ev.note === undefined ? '' : ev.note;
-    els.edStart.value = ev.start === null ? '' : ev.start;
-    els.edEnd.value = ev.end === null ? '' : ev.end;
+    fillTimePickers(ev);
 
     els.edDay.innerHTML = '<option value="">Day TBA</option>';
     for (const d of data.days) {
@@ -344,25 +406,66 @@ const ScheduleUI = (() => {
     editing = null;
   }
 
-  // Times are typed, not fiddled with in a date picker: "21:30" is four
-  // keystrokes, and "25:30" says half one after a midnight that belongs to
-  // the night before.
-  function validTime(v) {
-    if (v === '') return true;
-    if (!/^\d{1,2}:\d{2}$/.test(v)) return false;
-    const [h, m] = v.split(':').map(Number);
-    return h >= 0 && h <= 30 && m >= 0 && m < 60;
+  // Nobody should have to know that 1:30am is written 25:30. The hour list
+  // spans the day's own window and labels the small hours as next morning,
+  // so the ambiguity disappears instead of being explained.
+  function hourLabel(h) {
+    const h24 = h % 24;
+    const ampm = h24 < 12 ? 'am' : 'pm';
+    const twelve = h24 % 12 === 0 ? 12 : h24 % 12;
+    return `${twelve}${ampm}${h >= 24 ? ' (next morning)' : ''}`;
+  }
+
+  function fillTimePickers(ev) {
+    const day = data.days.find((d) => d.id === ev.day) === undefined
+      ? data.days.find((d) => d.id === activeDay)
+      : data.days.find((d) => d.id === ev.day);
+    const from = Math.floor(toMinutes(day.start) / 60);
+    const to = Math.ceil(toMinutes(day.end) / 60);
+
+    for (const [hSel, mSel, value] of [[els.edStartH, els.edStartM, ev.start], [els.edEndH, els.edEndM, ev.end]]) {
+      hSel.innerHTML = '<option value="">—</option>';
+      for (let h = from; h <= to; h++) {
+        const o = document.createElement('option');
+        o.value = String(h);
+        o.textContent = hourLabel(h);
+        hSel.appendChild(o);
+      }
+      mSel.innerHTML = '';
+      for (let m = 0; m < 60; m += 5) {
+        const o = document.createElement('option');
+        o.value = String(m);
+        o.textContent = `:${String(m).padStart(2, '0')}`;
+        mSel.appendChild(o);
+      }
+      if (value === null) {
+        hSel.value = '';
+        mSel.value = '0';
+      } else {
+        const mins = toMinutes(value);
+        hSel.value = String(Math.floor(mins / 60));
+        // Snap to the nearest five, so an odd published time still loads.
+        mSel.value = String(Math.round((mins % 60) / 5) * 5 % 60);
+      }
+    }
+  }
+
+  function readTime(hSel, mSel) {
+    if (hSel.value === '') return null;
+    const h = Number(hSel.value);
+    const m = Number(mSel.value);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
   async function saveEditor() {
-    const start = els.edStart.value.trim();
-    const end = els.edEnd.value.trim();
-    if (!validTime(start) || !validTime(end)) {
-      els.edHint.textContent = 'Times look like 21:30. Past midnight counts on: 25:30 is 1:30am.';
+    const start = readTime(els.edStartH, els.edStartM);
+    const end = readTime(els.edEndH, els.edEndM);
+    if ((start === null) !== (end === null)) {
+      els.edHint.textContent = 'Pick both a start and an end, or leave both blank.';
       return;
     }
-    if ((start === '') !== (end === '')) {
-      els.edHint.textContent = 'Give both a start and an end, or neither.';
+    if (start !== null && toMinutes(end) <= toMinutes(start)) {
+      els.edHint.textContent = 'The end has to come after the start.';
       return;
     }
     const patch = {
@@ -370,22 +473,25 @@ const ScheduleUI = (() => {
       note: els.edNote.value.trim(),
       day: els.edDay.value === '' ? null : els.edDay.value,
       track: els.edTrack.value === '' ? null : els.edTrack.value,
-      start: start === '' ? null : start,
-      end: end === '' ? null : end
+      start,
+      end
     };
     if (editing.isNew === true) patch.isNew = true;
+    remember();
     await setOverride(editing.id, patch);
     closeEditor();
     render();
   }
 
   async function toggleCancelled() {
+    remember();
     await setOverride(editing.id, { status: editing.status === 'cancelled' ? 'on' : 'cancelled' });
     closeEditor();
     render();
   }
 
   async function resetEvent() {
+    remember();
     await clearOverride(editing.id);
     closeEditor();
     render();
@@ -394,6 +500,7 @@ const ScheduleUI = (() => {
   async function addEvent() {
     const day = data.days.find((d) => d.id === activeDay);
     const id = `local-${Store.newId()}`;
+    remember();
     const patch = { isNew: true, title: 'New set', note: '', day: day.id, track: [...visibleTracks][0], start: null, end: null };
     await setOverride(id, patch);
     render();
@@ -422,8 +529,9 @@ const ScheduleUI = (() => {
     const a = mergePick;
     const spanStart = a.start !== null && other.start !== null ? (toMinutes(a.start) <= toMinutes(other.start) ? a.start : other.start) : a.start;
     const spanEnd = a.end !== null && other.end !== null ? (toMinutes(a.end) >= toMinutes(other.end) ? a.end : other.end) : a.end;
+    remember();
     await setOverride(a.id, { title: `${a.title} b2b ${other.title}`, start: spanStart, end: spanEnd });
-    await setOverride(other.id, { status: 'merged' });
+    await setOverride(other.id, { status: 'merged', mergedInto: a.id });
     stopMerge();
     render();
   }
@@ -586,6 +694,7 @@ const ScheduleUI = (() => {
     setlists = state.setlists;
     overrides = new Map(state.overrides.map((o) => [o.eventId, o]));
     cloud = state.cloud;
+    paintHistory();
     announcements = cloud === null || cloud.announcements === undefined ? [] : cloud.announcements;
     seen = new Set(await Store.getSeen());
     paintBell();
@@ -606,7 +715,9 @@ const ScheduleUI = (() => {
     for (const id of [
       'sched-days', 'sched-tracks', 'sched-friends', 'sched-friends-row', 'sched-grid', 'sched-tba',
       'sched-mine', 'sched-add', 'sched-sync', 'sched-sync-note', 'bell', 'bell-count', 'news', 'news-list', 'news-note', 'news-close', 'sched-editor', 'sched-merge-bar', 'sched-merge-what', 'sched-merge-stop',
-      'sched-ed-title', 'sched-ed-note', 'sched-ed-day', 'sched-ed-track', 'sched-ed-start', 'sched-ed-end',
+      'sched-ed-title', 'sched-ed-note', 'sched-ed-day', 'sched-ed-track',
+      'sched-ed-start-h', 'sched-ed-start-m', 'sched-ed-end-h', 'sched-ed-end-m',
+      'sched-undo', 'sched-redo', 'sched-reset',
       'sched-ed-save', 'sched-ed-close', 'sched-ed-cancel', 'sched-ed-reset', 'sched-ed-merge', 'sched-ed-hint'
     ]) {
       els[id.replace('sched-', '').replace(/-(\w)/g, (m, c) => c.toUpperCase())] = $(id);
@@ -641,6 +752,9 @@ const ScheduleUI = (() => {
     els.edCancel.addEventListener('click', toggleCancelled);
     els.edReset.addEventListener('click', resetEvent);
     els.edMerge.addEventListener('click', startMerge);
+    els.undo.addEventListener('click', undo);
+    els.redo.addEventListener('click', redo);
+    els.reset.addEventListener('click', resetEdits);
     els.mergeStop.addEventListener('click', stopMerge);
 
     els.bell.addEventListener('click', openNews);
