@@ -136,6 +136,9 @@ const Compass = (() => {
   }
 
   function clear() {
+    // Nothing has ever been targeted, so there is nothing to tear down --
+    // and on an uncalibrated map init() never ran, so els is still empty.
+    if (target === null) return;
     target = null;
     els.panel.hidden = true;
     stopHeading();
