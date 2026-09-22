@@ -58,6 +58,9 @@ function wireTabs() {
     // A callout is anchored to a pin on the map. Leaving the map leaves the
     // thing it points at, so it goes with it.
     PointsUI.closeCallout();
+    // Same for the compass: it points at a spot on the map, and clear()
+    // drops the orientation listener rather than just hiding the panel.
+    Compass.clear();
   };
   for (const name of names) tabs[name].addEventListener('click', () => pick(name));
 
